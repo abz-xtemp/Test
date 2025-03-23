@@ -223,6 +223,7 @@ class AutoAuto:
         self.C_Exists = os.path.exists(self.CTarget)
         self.Wait_Period = 0
         self.Busy = False
+        self.Curr_Data = ""  # Initialize curr_data
 
     def Window_Config(self):
         self.Window.wm_title('Launcher')
