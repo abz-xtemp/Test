@@ -166,6 +166,51 @@ class AutoAuto:
         self.Timer_Frame()
         self.Console_Frame()
 
+    def Change_Frame(self, Des):
+        if Des:
+            self.Default_AutoFrame = max(1, self.Default_AutoFrame - 1)
+        else:
+            self.Default_AutoFrame = min(self.Max_AutoFrame, self.Default_AutoFrame + 1)
+        
+        if self.Default_AutoFrame not in self.Frame_Map:
+            Current_Frame = []
+        else:
+            Current_Frame = self.Frame_Map[self.Default_AutoFrame]
+        
+        No_Buttons = len(Current_Frame)
+        Locs = self.Button_Names[:No_Buttons]
+        Colors = []
+        Loc_Mapper = {}
+        
+        for B in Current_Frame:
+            if self.Function_Invoke[B][1]:
+                Colors.append(COLOR_SCHEME["success"])  # Green for active
+            else:
+                Colors.append(COLOR_SCHEME["error"])  # Red for inactive
+                
+        for Loc, Buttons, Color in zip(Locs, Current_Frame, Colors):
+            Loc_Mapper[Loc] = [Buttons, Color]
+        
+        for loc in Loc_Mapper:
+            button_obj = self.Button_OBJS[loc][0]
+            button_x = self.Button_OBJS[loc][1]
+            button_y = self.Button_OBJS[loc][2]
+            
+            button_obj.config(
+                text=Loc_Mapper[loc][0],
+                command=lambda l=loc, fn=Loc_Mapper[loc][0]: self.Toggle_Function(l, fn),
+                bg=Loc_Mapper[loc][1],
+                fg='white',
+                font=('Arial', 10, 'bold'),
+                relief='flat',
+                activebackground=COLOR_SCHEME["button_hover"]
+            )
+            button_obj.place(x=button_x, y=button_y)
+        
+        # Hide unused buttons
+        for loc in set(self.Button_Names) - set(Loc_Mapper.keys()):
+            self.Button_OBJS[loc][0].place_forget()
+
     def Read_Automations(self):
         if self.C_Exists:
             try:
