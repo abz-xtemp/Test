@@ -1,0 +1,197 @@
+class RunOnce:
+    def __init__(self):
+        self.Window = Tk()
+        self.Window_Config()
+        self.Title_Bar()
+        self.File_Selection()
+        self.Console_Frame()
+        self.Window.mainloop()
+
+    def Window_Config(self):
+        self.Window.wm_title('Run Once')
+        width = 600
+        height = 550  # Increased height to accommodate new elements
+        screen_width = self.Window.winfo_screenwidth()
+        screen_height = self.Window.winfo_screenheight()
+        x = (screen_width / 2) - (width / 2)
+        y = (screen_height / 2) - (height / 2)
+        self.Window.geometry('%dx%d+%d+%d' % (width, height, x, y))
+        self.Window.configure(bg=COLOR_SCHEME["background"])
+        self.Window.resizable(False, False)
+
+    def Title_Bar(self):
+        self.Title = Label(self.Window, text='Run Once: Drag & Drop or Browse Files', width=45, padx=0, pady=0, 
+                           font=('Arial', 16, 'bold'), fg='white', bg=COLOR_SCHEME["primary"])
+        self.Title.grid(row=0, column=0, padx=5, pady=20, columnspan=10, sticky='e')
+
+    def File_Selection(self):
+        self.File_Frame = Frame(self.Window, width=550, height=200, bg=COLOR_SCHEME["frame_bg"], highlightbackground="black", highlightthickness=1)
+        self.File_Frame.grid(row=1, column=0, padx=5, pady=10)
+
+        # File 1
+        self.File1_Label = Label(self.File_Frame, text='File 1:', font=('Arial', 12), fg=COLOR_SCHEME["text"], bg=COLOR_SCHEME["frame_bg"])
+        self.File1_Label.grid(row=0, column=0, padx=5, pady=5, sticky='w')
+        self.File1_Entry = Entry(self.File_Frame, width=40, font=('Arial', 10))
+        self.File1_Entry.grid(row=0, column=1, padx=5, pady=5)
+        self.File1_Browse = Button(self.File_Frame, text='Browse', command=lambda: self.Browse_File(self.File1_Entry), 
+                                   font=('Arial', 10), fg=COLOR_SCHEME["button_fg"], bg=COLOR_SCHEME["button_bg"], 
+                                   relief='flat', activebackground=COLOR_SCHEME["button_hover"])
+        self.File1_Browse.grid(row=0, column=2, padx=5, pady=5)
+
+        # File 2
+        self.File2_Label = Label(self.File_Frame, text='File 2:', font=('Arial', 12), fg=COLOR_SCHEME["text"], bg=COLOR_SCHEME["frame_bg"])
+        self.File2_Label.grid(row=1, column=0, padx=5, pady=5, sticky='w')
+        self.File2_Entry = Entry(self.File_Frame, width=40, font=('Arial', 10))
+        self.File2_Entry.grid(row=1, column=1, padx=5, pady=5)
+        self.File2_Browse = Button(self.File_Frame, text='Browse', command=lambda: self.Browse_File(self.File2_Entry), 
+                                   font=('Arial', 10), fg=COLOR_SCHEME["button_fg"], bg=COLOR_SCHEME["button_bg"], 
+                                   relief='flat', activebackground=COLOR_SCHEME["button_hover"])
+        self.File2_Browse.grid(row=1, column=2, padx=5, pady=5)
+
+        # Automation Buttons
+        self.DayMovement_Button = Button(self.File_Frame, text='Day Movement', command=self.Day_Movement_Inputs, 
+                                         font=('Arial', 12, 'bold'), fg='white', bg=COLOR_SCHEME["secondary"], 
+                                         relief='flat', activebackground=COLOR_SCHEME["button_hover"])
+        self.DayMovement_Button.grid(row=2, column=0, padx=5, pady=10)
+
+        self.Run_Button = Button(self.File_Frame, text='Run', command=self.Run_Files, width=20, 
+                                 font=('Arial', 12, 'bold'), fg='white', bg=COLOR_SCHEME["success"], 
+                                 relief='flat', activebackground=COLOR_SCHEME["button_hover"])
+        self.Run_Button.grid(row=2, column=1, padx=5, pady=10)
+
+        # Input Frame (for dynamic inputs like sheet name and cell range)
+        self.Input_Frame = Frame(self.Window, width=550, height=100, bg=COLOR_SCHEME["frame_bg"], highlightbackground="black", highlightthickness=1)
+        self.Input_Frame.grid(row=2, column=0, padx=5, pady=10)
+
+    def Browse_File(self, entry_widget):
+        file_path = filedialog.askopenfilename(title="Select File", filetypes=(("Excel Files", "*.xlsx"), ("All Files", "*.*")))
+        if file_path:
+            entry_widget.delete(0, END)
+            entry_widget.insert(0, file_path)
+
+    def Day_Movement_Inputs(self):
+        # Clear any existing inputs in the Input_Frame
+        for widget in self.Input_Frame.winfo_children():
+            widget.destroy()
+
+        # Add Sheet Name Input
+        self.SheetName_Label = Label(self.Input_Frame, text='Sheet Name:', font=('Arial', 12), fg=COLOR_SCHEME["text"], bg=COLOR_SCHEME["frame_bg"])
+        self.SheetName_Label.grid(row=0, column=0, padx=5, pady=5, sticky='w')
+        self.SheetName_Entry = Entry(self.Input_Frame, width=40, font=('Arial', 10))
+        self.SheetName_Entry.grid(row=0, column=1, padx=5, pady=5)
+
+        # Add Cell Range Input
+        self.CellRange_Label = Label(self.Input_Frame, text='Cell Range (e.g., A1:K26):', font=('Arial', 12), fg=COLOR_SCHEME["text"], bg=COLOR_SCHEME["frame_bg"])
+        self.CellRange_Label.grid(row=1, column=0, padx=5, pady=5, sticky='w')
+        self.CellRange_Entry = Entry(self.Input_Frame, width=40, font=('Arial', 10))
+        self.CellRange_Entry.grid(row=1, column=1, padx=5, pady=5)
+
+    def process(self, file1, file2, sheet_name, cell_range, output_file):
+        """
+        Calculates the daily movement and saves it as a new Excel file.
+        """
+        try:
+            # Read the input files
+            df1 = pd.read_excel(file1, sheet_name=sheet_name, engine="openpyxl")
+            df2 = pd.read_excel(file2, sheet_name=sheet_name, engine="openpyxl")
+
+            # Parse the cell range
+            start_col, start_row, end_col, end_row = self.parse_cell_range(cell_range)
+
+            # Extract the specified cell range and calculate the daily movement
+            df1_values = df1.iloc[start_row:end_row, start_col:end_col].astype(float)
+            df2_values = df2.iloc[start_row:end_row, start_col:end_col].astype(float)
+            day_movement = df2_values - df1_values
+
+            # Create a DataFrame for the result
+            df = pd.DataFrame(day_movement)
+
+            # Save the result to a new Excel file
+            with pd.ExcelWriter(output_file, engine='openpyxl') as writer:
+                df.to_excel(writer, index=False, sheet_name='Day Movement')
+
+            return output_file  # Return the path to the saved file
+
+        except Exception as e:
+            print(f"Error: {e}")
+            return None
+
+    def parse_cell_range(self, cell_range):
+        """
+        Converts an Excel cell range (e.g., "A1:K26") into row and column indices.
+        """
+        match = re.match(r"([A-Z]+)(\d+):([A-Z]+)(\d+)", cell_range)
+        if not match:
+            raise ValueError("Invalid cell range format. Use format like 'A1:D10'.")
+
+        start_col, start_row, end_col, end_row = match.groups()
+
+        def col_to_index(col):
+            index = 0
+            for char in col:
+                index = index * 26 + (ord(char) - ord('A') + 1)
+            return index - 1
+
+        start_col_index = col_to_index(start_col)
+        start_row_index = int(start_row) - 1  # Excel rows are 1-indexed
+        end_col_index = col_to_index(end_col) + 1  # End column should be exclusive
+        end_row_index = int(end_row)  # End row is inclusive
+
+        return start_col_index, start_row_index, end_col_index, end_row_index
+
+    def Run_Files(self):
+        if not hasattr(self, 'SheetName_Entry') or not hasattr(self, 'CellRange_Entry'):
+            self.Update_Console("Please select an automation and provide the required inputs.")
+            return
+
+        file1 = self.File1_Entry.get()
+        file2 = self.File2_Entry.get()
+        sheet_name = self.SheetName_Entry.get()
+        cell_range = self.CellRange_Entry.get()
+
+        if not file1 or not file2 or not sheet_name or not cell_range:
+            self.Update_Console("Please fill in all fields.")
+            return
+
+        try:
+            # Define the output file path
+            output_file = "Day_Movement_Output.xlsx"
+
+            # Process the files and create the output Excel file
+            result_file = self.process(file1, file2, sheet_name, cell_range, output_file)
+
+            if result_file:
+                self.Update_Console(f"Processing complete. File saved as {output_file}.")
+                # Add a download button for the output file
+                self.Download_Button = Button(self.File_Frame, text='Download Final File', command=lambda: self.Download_File(output_file), 
+                                          font=('Arial', 12, 'bold'), fg='white', bg=COLOR_SCHEME["accent"], 
+                                          relief='flat', activebackground=COLOR_SCHEME["button_hover"])
+                self.Download_Button.grid(row=3, column=0, columnspan=3, padx=5, pady=10)
+            else:
+                self.Update_Console("Error processing files. Please check the inputs and try again.")
+        except Exception as e:
+            self.Update_Console(f"Error: {e}")
+
+    def Download_File(self, file_path):
+        try:
+            # Open the file in the default application (e.g., Excel)
+            os.startfile(file_path)
+        except Exception as e:
+            self.Update_Console(f"Error opening file: {e}")
+
+    def Console_Frame(self):
+        self.Console_Frame = Frame(self.Window, width=550, height=200, bg=COLOR_SCHEME["frame_bg"], highlightbackground="black", highlightthickness=1)
+        self.Console_Frame.grid(row=3, column=0, padx=5, pady=10)
+
+        self.Console_Out = ScrolledText(self.Console_Frame, width=65, height=10, bg=COLOR_SCHEME["frame_bg"], fg=COLOR_SCHEME["text"])
+        self.Console_Out.pack(fill=BOTH, side=LEFT, expand=True)
+
+        self.Curr_Data = "Console Output:\n"
+        self.Console_Out.bind('<Control-v>', lambda _: 'break')
+        self.Console_Out.bind('<BackSpace>', lambda _: 'break')
+        self.Update_Console(self.Curr_Data)
+
+    def Update_Console(self, WData):
+        self.Curr_Data += WData + '\n'
+        self.Console_Out.insert('end', WData + '\n')
+        self.Console_Out.see('end')
