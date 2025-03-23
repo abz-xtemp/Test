@@ -85,17 +85,17 @@ class AutoAuto():
         self.Window.resizable(False, False)
     
     def Title_Bar(self):
-        self.Title = Label(self.Window, text='Auto Automation', width=45, padx=0, pady=0, columnspan=10, sticky='e', 
+        self.Title = Label(self.Window, text='Auto Automation', width=45, padx=0, pady=0, 
                            font=('Arial', 16, 'bold'), fg='white', bg=COLOR_SCHEME["primary"])
         self.Title.grid(row=0, column=0, padx=5, pady=5, columnspan=10, sticky='e')
     
     def Section_Bar(self):
-        self.TitleL = Label(self.Window, text='Panel', width=33, height=1, font=('Arial', 12, 'bold'), 
-                           fg='white', bg=COLOR_SCHEME["secondary"])
+        self.TitleL = Label(self.Window, text='Panel', width=33, height=1, 
+                           font=('Arial', 12, 'bold'), fg='white', bg=COLOR_SCHEME["secondary"])
         self.TitleL.grid(row=1, column=0, padx=5, pady=5, columnspan=5, sticky='w')
         
-        self.TitleR = Label(self.Window, text='Console', width=54, height=1, font=('Arial', 12, 'bold'), 
-                           fg='white', bg=COLOR_SCHEME["accent"])
+        self.TitleR = Label(self.Window, text='Console', width=54, height=1, 
+                           font=('Arial', 12, 'bold'), fg='white', bg=COLOR_SCHEME["accent"])
         self.TitleR.grid(row=1, column=5, padx=5, pady=5, columnspan=5, sticky='e')
     
     def Change_Frame(self, Des):
@@ -178,17 +178,17 @@ class AutoAuto():
         
         self.Button_OBJS = {
             'NW': [Button(self.Function, text='', command='', width=18, font=('Arial', 10, 'bold'), 
-                   fg='white', bg='black', relief='flat', activebackground=COLOR_SCHEME["button_hover"]), 8, 35],
+                          fg='white', bg='black', relief='flat', activebackground=COLOR_SCHEME["button_hover"]), 8, 35],
             'NE': [Button(self.Function, text='', command='', width=18, font=('Arial', 10, 'bold'), 
-                   fg='white', bg='black', relief='flat', activebackground=COLOR_SCHEME["button_hover"]), 171, 35],
+                          fg='white', bg='black', relief='flat', activebackground=COLOR_SCHEME["button_hover"]), 171, 35],
             'W': [Button(self.Function, text='', command='', width=18, font=('Arial', 10, 'bold'), 
-                  fg='white', bg='black', relief='flat', activebackground=COLOR_SCHEME["button_hover"]), 8, 70],
+                         fg='white', bg='black', relief='flat', activebackground=COLOR_SCHEME["button_hover"]), 8, 70],
             'E': [Button(self.Function, text='', command='', width=18, font=('Arial', 10, 'bold'), 
-                  fg='white', bg='black', relief='flat', activebackground=COLOR_SCHEME["button_hover"]), 171, 70],
+                         fg='white', bg='black', relief='flat', activebackground=COLOR_SCHEME["button_hover"]), 171, 70],
             'SW': [Button(self.Function, text='', command='', width=18, font=('Arial', 10, 'bold'), 
-                   fg='white', bg='black', relief='flat', activebackground=COLOR_SCHEME["button_hover"]), 8, 105],
+                          fg='white', bg='black', relief='flat', activebackground=COLOR_SCHEME["button_hover"]), 8, 105],
             'SE': [Button(self.Function, text='', command='', width=18, font=('Arial', 10, 'bold'), 
-                   fg='white', bg='black', relief='flat', activebackground=COLOR_SCHEME["button_hover"]), 171, 105]
+                          fg='white', bg='black', relief='flat', activebackground=COLOR_SCHEME["button_hover"]), 171, 105]
         }
         self.Change_Frame(True)
     
@@ -223,6 +223,18 @@ class AutoAuto():
                                   font=('Arial', 12, 'bold'), fg=COLOR_SCHEME["button_fg"], bg=COLOR_SCHEME["button_bg"], 
                                   relief='flat', activebackground=COLOR_SCHEME["button_hover"])
         self.Refresh_Auto.place(x=175, y=55)
+    
+    def Refresh_GUI(self):
+        self.Read_Automations()
+        Button_Names = [KEY for KEY in self.Function_Invoke]
+        self.No_Function = len(Button_Names)
+        Frame_Group = [Button_Names[i:i + 6] for i in range(0, self.No_Function, 6)]
+        self.Max_AutoFrame = len(Frame_Group)
+        self.Frame_Map = {}
+        for i in range(self.Default_AutoFrame, self.Max_AutoFrame + 1):
+            self.Frame_Map[i] = Frame_Group[i - 1]
+        self.Change_Frame(True)
+        self.Update_Console("Automations refreshed successfully.")
     
     def Timer_Frame(self):
         Slide = 12
