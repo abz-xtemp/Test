@@ -153,7 +153,6 @@ class RunOnce:
         self.Console_Out.see('end')
 
 
-# Your original AutoAuto class
 class AutoAuto:
     def __init__(self):
         self.Data_Structures()
@@ -225,7 +224,287 @@ class AutoAuto:
         self.Wait_Period = 0
         self.Busy = False
 
-    # ... (rest of your AutoAuto class code)
+    def Window_Config(self):
+        self.Window.wm_title('Launcher')
+        width = 900
+        height = 495
+        screen_width = self.Window.winfo_screenwidth()
+        screen_height = self.Window.winfo_screenheight()
+        x = (screen_width / 2) - (width / 2)
+        y = (screen_height / 2) - (height / 2)
+        self.Window.geometry('%dx%d+%d+%d' % (width, height, x, y))
+        self.Window.grid_columnconfigure(1, minsize=70, weight=1)
+        self.Window.configure(bg=COLOR_SCHEME["background"])
+        self.Window.resizable(False, False)
+
+    def Title_Bar(self):
+        self.Title = Label(self.Window, text='Auto Automation', width=45, padx=0, pady=0, 
+                           font=('Arial', 16, 'bold'), fg='white', bg=COLOR_SCHEME["primary"])
+        self.Title.grid(row=0, column=0, padx=5, pady=5, columnspan=10, sticky='e')
+
+    def Section_Bar(self):
+        self.TitleL = Label(self.Window, text='Panel', width=33, height=1, 
+                           font=('Arial', 12, 'bold'), fg='white', bg=COLOR_SCHEME["secondary"])
+        self.TitleL.grid(row=1, column=0, padx=5, pady=5, columnspan=5, sticky='w')
+        
+        self.TitleR = Label(self.Window, text='Console', width=54, height=1, 
+                           font=('Arial', 12, 'bold'), fg='white', bg=COLOR_SCHEME["accent"])
+        self.TitleR.grid(row=1, column=5, padx=5, pady=5, columnspan=5, sticky='e')
+
+    def Function_Frame(self):
+        self.Function = Frame(self.Window, width=335, height=150, bg=COLOR_SCHEME["frame_bg"], highlightbackground="black", highlightthickness=1)
+        self.Function.grid(row=2, column=0, padx=5, pady=0, columnspan=5, sticky='w')
+        
+        self.A_Label = Label(self.Function, text='Automations :', font=('Arial', 12, 'bold'), fg=COLOR_SCHEME["text"], bg=COLOR_SCHEME["frame_bg"])
+        self.A_Label.place(x=74, y=5)
+        
+        self.Yes_Label = Label(self.Function, text='Yes', font=('Arial', 10, 'bold'), fg='white', bg=COLOR_SCHEME["success"])
+        self.Yes_Label.place(x=190, y=5)
+        
+        self.No_Label = Label(self.Function, text='No', font=('Arial', 10, 'bold'), fg='white', bg=COLOR_SCHEME["error"])
+        self.No_Label.place(x=235, y=5)
+        
+        self.Auto_Adjustment = 40
+        self.To_Right = Button(self.Function, text='›', command=lambda: self.Change_Frame(False), width=2, 
+                              font=('Arial', 8), fg=COLOR_SCHEME["button_fg"], bg=COLOR_SCHEME["button_bg"], 
+                              relief='flat', activebackground=COLOR_SCHEME["button_hover"])
+        self.To_Right.place(x=305 - self.Auto_Adjustment, y=4)
+        
+        self.To_Left = Button(self.Function, text='‹', command=lambda: self.Change_Frame(True), width=2, 
+                             font=('Arial', 8), fg=COLOR_SCHEME["button_fg"], bg=COLOR_SCHEME["button_bg"], 
+                             relief='flat', activebackground=COLOR_SCHEME["button_hover"])
+        self.To_Left.place(x=4 + self.Auto_Adjustment, y=4)
+        
+        # MAKE BUTTONS
+        Button_Names = [KEY for KEY in self.Function_Invoke]
+        self.No_Function = len(Button_Names)
+        Frame_Group = [Button_Names[i:i + 6] for i in range(0, self.No_Function, 6)]
+        self.Max_AutoFrame = len(Frame_Group)
+        self.Frame_Map = {}
+        for i in range(self.Default_AutoFrame, self.Max_AutoFrame + 1):
+            self.Frame_Map[i] = Frame_Group[i - 1]
+        
+        self.Button_OBJS = {
+            'NW': [Button(self.Function, text='', command='', width=18, font=('Arial', 10, 'bold'), 
+                          fg='white', bg='black', relief='flat', activebackground=COLOR_SCHEME["button_hover"]), 8, 35],
+            'NE': [Button(self.Function, text='', command='', width=18, font=('Arial', 10, 'bold'), 
+                          fg='white', bg='black', relief='flat', activebackground=COLOR_SCHEME["button_hover"]), 171, 35],
+            'W': [Button(self.Function, text='', command='', width=18, font=('Arial', 10, 'bold'), 
+                         fg='white', bg='black', relief='flat', activebackground=COLOR_SCHEME["button_hover"]), 8, 70],
+            'E': [Button(self.Function, text='', command='', width=18, font=('Arial', 10, 'bold'), 
+                         fg='white', bg='black', relief='flat', activebackground=COLOR_SCHEME["button_hover"]), 171, 70],
+            'SW': [Button(self.Function, text='', command='', width=18, font=('Arial', 10, 'bold'), 
+                          fg='white', bg='black', relief='flat', activebackground=COLOR_SCHEME["button_hover"]), 8, 105],
+            'SE': [Button(self.Function, text='', command='', width=18, font=('Arial', 10, 'bold'), 
+                          fg='white', bg='black', relief='flat', activebackground=COLOR_SCHEME["button_hover"]), 171, 105]
+        }
+        self.Change_Frame(True)
+
+    def Config_Frame(self):
+        self.Config = Frame(self.Window, width=335, height=103, bg=COLOR_SCHEME["frame_bg"], highlightbackground="black", highlightthickness=1)
+        self.Config.grid(row=3, column=0, padx=5, pady=5, columnspan=5, sticky='w')
+        
+        self.C_Label = Label(self.Config, text='Configuration', font=('Arial', 12, 'bold'), fg=COLOR_SCHEME["text"], bg=COLOR_SCHEME["frame_bg"])
+        self.C_Label.place(x=100, y=5)
+        
+        self.C_Status = Label(self.Config, font=('Arial', 12, 'bold'), bg=COLOR_SCHEME["frame_bg"])
+        self.C_Status.place(x=210, y=5)
+        
+        self.C_Ins = Label(self.Config, font=('Arial', 9, 'italic'), fg=COLOR_SCHEME["text"], bg=COLOR_SCHEME["frame_bg"])
+        self.C_Ins.place(x=6, y=26)
+        
+        if self.C_Exists:
+            self.C_Status.config(text='[v]', fg=COLOR_SCHEME["success"])
+            self.C_Ins.config(text='*Update Automation File paths using the button below*')
+            config_button_text = 'Edit Config'
+        else:
+            self.C_Ins.config(text="*Configuration not found, Please create one.*")
+            self.C_Status.config(text='[X]', fg=COLOR_SCHEME["error"])
+            config_button_text = 'Create Config'
+            
+        self.Schedule_B = Button(self.Config, text=config_button_text, command=self.C_Driver, width=12, 
+                                 font=('Arial', 12, 'bold'), fg=COLOR_SCHEME["button_fg"], bg=COLOR_SCHEME["button_bg"], 
+                                 relief='flat', activebackground=COLOR_SCHEME["button_hover"])
+        self.Schedule_B.place(x=24, y=55)
+        
+        self.Refresh_Auto = Button(self.Config, text='Refresh', command=self.Refresh_GUI, width=12, 
+                                  font=('Arial', 12, 'bold'), fg=COLOR_SCHEME["button_fg"], bg=COLOR_SCHEME["button_bg"], 
+                                  relief='flat', activebackground=COLOR_SCHEME["button_hover"])
+        self.Refresh_Auto.place(x=175, y=55)
+
+    def Refresh_GUI(self):
+        self.Read_Automations()
+        Button_Names = [KEY for KEY in self.Function_Invoke]
+        self.No_Function = len(Button_Names)
+        Frame_Group = [Button_Names[i:i + 6] for i in range(0, self.No_Function, 6)]
+        self.Max_AutoFrame = len(Frame_Group)
+        self.Frame_Map = {}
+        for i in range(self.Default_AutoFrame, self.Max_AutoFrame + 1):
+            self.Frame_Map[i] = Frame_Group[i - 1]
+        self.Change_Frame(True)
+        self.Update_Console("Automations refreshed successfully.")
+
+    def Timer_Frame(self):
+        Slide = 12
+        self.Timer = Frame(self.Window, width=335, height=160, bg=COLOR_SCHEME["frame_bg"], highlightbackground="black", highlightthickness=1)
+        self.Timer.grid(row=4, column=0, padx=5, pady=0, columnspan=5, sticky='w')
+        
+        self.T_Label = Label(self.Timer, text='Auto-Scheduler', font=('Arial', 12, 'bold'), fg=COLOR_SCHEME["text"], bg=COLOR_SCHEME["frame_bg"])
+        self.T_Label.place(x=101, y=5)
+        
+        self.F_Date = Label(self.Timer, text=f'(Date Format: MM/DD/YY)', font=('Arial', 9, 'italic'), fg=COLOR_SCHEME["text"], bg=COLOR_SCHEME["frame_bg"])
+        self.F_Date.place(x=75, y=30)
+        
+        self.SD_Label = Label(self.Timer, text='Date :', font=('Arial', 11, 'bold'), fg=COLOR_SCHEME["text"], bg=COLOR_SCHEME["frame_bg"])
+        self.SD_Label.place(x=15 + Slide, y=65)
+        
+        self.Calendar = DateEntry(self.Timer, width=12, background='darkblue', foreground='white', borderwidth=1)
+        self.Calendar.place(x=65 + Slide, y=67)
+        
+        self.ST_Label = Label(self.Timer, text='Time :', font=('Arial', 11, 'bold'), fg=COLOR_SCHEME["text"], bg=COLOR_SCHEME["frame_bg"])
+        self.ST_Label.place(x=167 + Slide, y=65)
+        
+        self.Time = SpinTimePickerModern(self.Timer)
+        self.Time.addAll(constants.HOURS24)
+        self.Time.configureAll(bg="gray", height=1, fg="white", font=("Arial", 11, 'bold'), 
+                              hoverbg="#404040", hovercolor="white", clickedbg="black", clickedcolor="white")
+        self.Time.configure_separator(bg="#404040", fg="#ffffff")
+        self.Time.set24Hrs(self.Current_Time[0])
+        self.Time.setMins(self.Current_Time[1])
+        self.Time.place(x=220 + Slide, y=65)
+        
+        self.Run_B = Button(self.Timer, text='Run', command=self.Run, width=10, font=('Arial', 12, 'bold'), 
+                           fg='white', bg=COLOR_SCHEME["error"], relief='flat', activebackground=COLOR_SCHEME["button_hover"])
+        self.Run_B.place(x=40, y=110)
+        
+        self.Schedule_B = Button(self.Timer, text='Schedule', command=self.Schedule, width=10, font=('Arial', 12, 'bold'), 
+                                fg='white', bg=COLOR_SCHEME["success"], relief='flat', activebackground=COLOR_SCHEME["button_hover"])
+        self.Schedule_B.place(x=180, y=110)
+
+    def Console_Frame(self):
+        self.Console_Frame = Frame(self.Window, width=335, height=280, bg=COLOR_SCHEME["frame_bg"], highlightbackground="black", highlightthickness=1)
+        self.Console_Frame.place(x=350, y=66)
+        
+        self.Console_Out = ScrolledText(self.Console_Frame, width=65, height=26, bg=COLOR_SCHEME["frame_bg"], fg=COLOR_SCHEME["text"])
+        self.Console_Out.pack(fill=BOTH, side=LEFT, expand=True)
+        
+        self.Curr_Data = "Hello there.\nThis is a standard console.\nYour Automation states, outputs, error will appear here.\nThis Window will Keep you updated."
+        self.Console_Out.bind('<Control-v>', lambda _: 'break')
+        self.Console_Out.bind('<BackSpace>', lambda _: 'break')
+        self.Update_Console(self.Curr_Data)
+        self.Update_Console("If Configuration Frame doesn't work:\nPlease check for stray MS Excel Application in the task manager.\nThen use 'End task'.")
+
+    def Update_Console(self, WData):
+        self.Curr_Data += WData
+        WData += '\n-----------\n'
+        self.Console_Out.insert('end', WData)
+
+    def Config_MAKE(self):
+        self.C_Exists = True
+        Create_WB = xlwings.Book()
+        Create_WB.sheets('Sheet1').api.Name = 'Configuration'
+        Con_Sheet = Create_WB.sheets('Configuration')
+        Con_Sheet.range('A1').value = 'Automation Name'
+        Con_Sheet.range('B1').value = 'Main Script(s)'
+        Con_Sheet.range('C1').value = 'Template (If any)'
+        Con_Sheet.range('D1').value = 'Interpreter'
+        Con_Sheet.range('F1').value = '//After adding/updating Automation Paths, Please use refresh button in the App'
+        Con_Sheet.range('A1:D1').color = (255, 0, 0)
+        Con_Sheet.range('A1:D1').font.color = (255, 255, 255)
+        Con_Sheet.range('A1:D1').font.bold = True
+        Con_Sheet.range('A1:D1').font.size = 13
+        Con_Sheet.range('F1').font.italic = True
+        Con_Sheet.range('A1:D1').api.Borders.Weight = 3
+        Con_Sheet.range('A1:D1').autofit()
+        Con_Sheet.range('A1:D1').api.HorizontalAlignment = xlwings.constants.HAlign.xlHAlignCenter
+        Con_Sheet.range('A1:D1').api.VerticalAlignment = xlwings.constants.VAlign.xlVAlignCenter
+        Create_WB.save(self.CTarget)
+        Create_WB.close()
+
+    def Toggle_Function(self, Loc, Fname):
+        Status = self.Function_Invoke[Fname][1]
+        if Status:
+            ChangeColor = COLOR_SCHEME["error"]  # Red for inactive
+        else:
+            ChangeColor = COLOR_SCHEME["success"]  # Green for active
+        self.Button_OBJS[Loc][0].config(bg=ChangeColor)
+        self.Function_Invoke[Fname][1] = not Status
+
+    def Schedule(self):
+        Chosen_Func = [Key for Key in self.Function_Invoke if self.Function_Invoke[Key][1]]
+        if len(Chosen_Func) == 0:
+            self.Update_Console('No Function is selected to be scheduled.')
+        else:
+            Funcs = ", ".join(Chosen_Func)
+            self.Update_Console("Selected Function(s): " + Funcs)
+            self.Wait_Period = self.Run_Schedule_Update()
+            if self.Wait_Period == 0:
+                self.Update_Console('Please choose a time in the future. Else use "Run" Button.')
+            else:
+                self.Busy = True
+                if self.Busy:
+                    T = self.Time.time()
+                    T = str(T[0]) + ':' + str(T[1])
+                    self.Update_Console('Task scheduled for ' + T + ' at ' + str(self.Calendar.get_date()) + '.')
+                    Thread(target=self.Start_Wait).start()
+                    self.Schedule_B.config(command=self.Cancel_Schedule, text='Cancel', bg=COLOR_SCHEME["error"])
+
+    def Cancel_Schedule(self):
+        self.Trigger_Cancel = True
+
+    def Run(self):
+        Chosen_Func = [Key for Key in self.Function_Invoke if self.Function_Invoke[Key][1]]
+        if len(Chosen_Func) == 0:
+            self.Update_Console('No Function is selected to run.')
+        else:
+            Funcs = ", ".join(Chosen_Func)
+            self.Update_Console("Selected Function(s): " + Funcs)
+            self.Wait_Period = 0
+            self.Update_Console('Running Task(s)')
+            Thread(target=self.Start_Wait).start()
+            self.Run_B.config(text='Running', command='', bg=COLOR_SCHEME["button_bg"])
+
+    def Start_Wait(self):
+        try:
+            if self.Busy:
+                Time_to_wait = self.Run_Schedule_Update()
+                self.Update_Console('Schedule is created, Tasks will be triggered at time.')
+                while self.Trigger_Cancel == False and Time_to_wait > 0:
+                    time.sleep(1)
+                    Time_to_wait -= 1
+                if self.Trigger_Cancel:
+                    self.Update_Console('Schedule is cancelled.')
+                    self.Trigger_Cancel = not self.Trigger_Cancel
+            
+            To_Be_Done = [Key for Key in self.Function_Invoke if self.Function_Invoke[Key][1]]
+            for Auto in To_Be_Done:
+                self.Update_Console(f'Executing: {Auto}')
+                if not os.path.exists(self.Py_Interpreter):
+                    self.Py_Interpreter = 'python'
+                Script, _, Template = self.Function_Invoke[Auto]
+                Script, Template = str(Script), str(Template)
+                if not os.path.exists(Script):
+                    self.Update_Console(f'{Auto} Script: {Script} || Not Found || Not Executed')
+                    continue
+                if not os.path.exists(Template):
+                    self.Update_Console(f'{Auto} Template: {Template} || Not Found')
+                    Template = ''
+                
+                LogOut = subprocess.run([self.Py_Interpreter, Script, Template], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                Out = LogOut.stdout.decode('utf-8', 'ignore')
+                Err = LogOut.stderr.decode('utf-8', 'ignore')
+                if Out != '':
+                    self.Update_Console('Output: ' + Out)
+                if Err != '':
+                    self.Update_Console('Error: ' + Err)
+                self.Update_Console(f'Finished: {Auto}')
+        except:
+            self.Update_Console(f'{traceback.format_exc()}')
+        finally:
+            self.Update_Console('Tasks successfully completed.')
+            self.Busy = False
+            self.Schedule_B.config(command=self.Schedule, text='Schedule', bg=COLOR_SCHEME["success"])
+            self.Run_B.config(command=self.Run, text='Run', bg=COLOR_SCHEME["error"])
 
     def Start_Window(self):
         self.Window.mainloop()
