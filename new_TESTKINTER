@@ -175,11 +175,13 @@ class AutoAuto:
                 required_columns = ['Automation Name', 'Main Script(s)', 'Template (If any)', 'Interpreter']
                 if not all(column in Auto_DF.columns for column in required_columns):
                     self.Update_Console("Error: Required columns are missing in the Excel file.")
+                    self.Function_Invoke = {}  # Initialize as empty
                     return
                 
                 # Check if there is at least one row of data
                 if Auto_DF.empty:
-                    self.Update_Console("Error: No data found in the Excel file.")
+                    self.Update_Console("Configuration file is empty. No automations loaded.")
+                    self.Function_Invoke = {}  # Initialize as empty
                     return
                 
                 # Read data
@@ -195,8 +197,10 @@ class AutoAuto:
             
             except Exception as e:
                 self.Update_Console(f"Error reading Excel file: {str(e)}")
+                self.Function_Invoke = {}  # Initialize as empty
         else:
             self.Update_Console("Configuration file not found. Please create one.")
+            self.Function_Invoke = {}  # Initialize as empty
 
     def C_Driver(self):
         if self.C_Exists:
