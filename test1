@@ -39,8 +39,26 @@ class AutoAuto():
         self.Read_Automations()
         self.Window = ctk.CTk()
         self.Window_Config()
+        self.Create_Layout()
+        
+    def Create_Layout(self):
+        """Create main layout with consistent padding and spacing"""
+        # Create main frames with consistent padding
+        self.left_panel = CTkFrame(self.Window, width=350, height=405, corner_radius=10, fg_color=CUSTOM_COLORS["background"])
+        self.left_panel.grid(row=0, column=0, padx=15, pady=15, sticky='nsew')
+        self.left_panel.grid_propagate(False)
+        
+        self.right_panel = CTkFrame(self.Window, width=350, height=405, corner_radius=10, fg_color=CUSTOM_COLORS["background"])
+        self.right_panel.grid(row=0, column=1, padx=15, pady=15, sticky='nsew')
+        self.right_panel.grid_propagate(False)
+        
+        # Configure grid layout for left panel
+        self.left_panel.grid_columnconfigure(0, weight=1)
+        for i in range(4):
+            self.left_panel.grid_rowconfigure(i, weight=1 if i == 3 else 0)
+        
+        # Add all components
         self.Title_Bar()
-        self.Section_Bar()
         self.Function_Frame()
         self.Config_Frame()
         self.Timer_Frame()
@@ -74,90 +92,193 @@ class AutoAuto():
         return self.Wait_Period
 
     def Window_Config(self):
-        self.Window.title('Launcher')
-        width = 900
-        height = 495
+        self.Window.title('Automation Launcher')
+        width = 730
+        height = 435
         screen_width = self.Window.winfo_screenwidth()
         screen_height = self.Window.winfo_screenheight()
         x = (screen_width / 2) - (width / 2)
         y = (screen_height / 2) - (height / 2)
         self.Window.geometry('%dx%d+%d+%d' % (width, height, x, y))
-        self.Window.grid_columnconfigure(1, minsize=70, weight=1)
         self.Window.resizable(False, False)
-        self.Window.configure(bg=CUSTOM_COLORS["background"])
+        
+        # Configure main window grid system
+        self.Window.grid_columnconfigure(0, weight=1, minsize=350)
+        self.Window.grid_columnconfigure(1, weight=1, minsize=350)
+        self.Window.grid_rowconfigure(0, weight=1)
 
     def Title_Bar(self):
-        self.Title = CTkLabel(self.Window, text='Auto Automation', width=45, height=40, corner_radius=8,
-                              font=('Ariel', 15, 'bold'), fg_color=CUSTOM_COLORS["primary"], text_color="white")
-        self.Title.grid(row=0, column=0, padx=10, pady=10, columnspan=10, sticky='e')
+        # Create a header frame for title
+        header_frame = CTkFrame(self.left_panel, fg_color=CUSTOM_COLORS["background"], corner_radius=0)
+        header_frame.grid(row=0, column=0, sticky='ew', padx=10, pady=(5, 10))
+        header_frame.grid_columnconfigure(0, weight=1)
+        
+        self.Title = CTkLabel(header_frame, text='Auto Automation', height=40, corner_radius=8,
+                              font=('Arial', 16, 'bold'), fg_color=CUSTOM_COLORS["primary"], text_color="white")
+        self.Title.grid(row=0, column=0, sticky='ew', padx=5, pady=5)
+        
+        # Create section label for right panel
+        console_header = CTkFrame(self.right_panel, fg_color=CUSTOM_COLORS["background"], corner_radius=0)
+        console_header.pack(fill='x', padx=10, pady=5)
+        
+        self.TitleR = CTkLabel(console_header, text='Console', height=30, corner_radius=8,
+                               font=('Arial', 14, 'bold'), fg_color=CUSTOM_COLORS["accent"], text_color="white")
+        self.TitleR.pack(fill='x', padx=5, pady=5)
 
-    def Section_Bar(self):
-        self.TitleL = CTkLabel(self.Window, text='Panel', width=33, height=30, corner_radius=8,
-                               font=('Ariel', 12, 'bold'), fg_color=CUSTOM_COLORS["secondary"], text_color="white")
-        self.TitleL.grid(row=1, column=0, padx=10, pady=5, columnspan=5, sticky='w')
+    def Change_Frame(self, Des):
+        if Des:
+            self.Default_AutoFrame = max(1, self.Default_AutoFrame - 1)
+        else:
+            self.Default_AutoFrame = min(self.Max_AutoFrame, self.Default_AutoFrame + 1)
 
-        self.TitleR = CTkLabel(self.Window, text='Console', width=54, height=30, corner_radius=8,
-                               font=('Ariel', 12, 'bold'), fg_color=CUSTOM_COLORS["accent"], text_color="white")
-        self.TitleR.grid(row=1, column=5, padx=10, pady=5, columnspan=5, sticky='e')
+        if self.Default_AutoFrame not in self.Frame_Map:
+            Current_Frame = []
+        else:
+            Current_Frame = self.Frame_Map[self.Default_AutoFrame]
+
+        No_Buttons = len(Current_Frame)
+        Locs = self.Button_Names[:No_Buttons]
+        Colors = []
+        Loc_Mapper = {}
+
+        for B in Current_Frame:
+            if self.Function_Invoke[B][1]:
+                Colors.append(CUSTOM_COLORS["success"])  # Active green
+            else:
+                Colors.append(CUSTOM_COLORS["error"])  # Inactive red
+
+        for Loc, Buttons, Color in zip(Locs, Current_Frame, Colors):
+            Loc_Mapper[Loc] = [Buttons, Color]
+
+        # Reset all buttons to be out of view
+        for key in self.Button_OBJS:
+            self.Button_OBJS[key][0].place_forget()
+
+        # Place only the buttons we need
+        for loc in Loc_Mapper:
+            button_obj = self.Button_OBJS[loc][0]
+            button_x = self.Button_OBJS[loc][1] 
+            button_y = self.Button_OBJS[loc][2]
+            
+            button_obj.configure(
+                text=Loc_Mapper[loc][0], 
+                fg_color=Loc_Mapper[loc][1],
+                command=lambda l=loc, fn=Loc_Mapper[loc][0]: self.Toggle_Function(l, fn)
+            )
+            button_obj.place(x=button_x, y=button_y)
 
     def Function_Frame(self):
-        self.Function = CTkFrame(self.Window, width=335, height=150, corner_radius=10, fg_color=CUSTOM_COLORS["background"])
-        self.Function.grid(row=2, column=0, padx=10, pady=5, columnspan=5, sticky='w')
+        self.Function = CTkFrame(self.left_panel, corner_radius=10, fg_color=CUSTOM_COLORS["background"])
+        self.Function.grid(row=1, column=0, padx=10, pady=5, sticky='ew')
+        self.Function.grid_propagate(False)
+        self.Function.configure(height=150)
 
-        self.A_Label = CTkLabel(self.Function, text='Automations :', font=('Ariel', 12, 'bold'), text_color=CUSTOM_COLORS["text"])
-        self.A_Label.place(x=10, y=5)
+        header_frame = CTkFrame(self.Function, fg_color=CUSTOM_COLORS["background"], corner_radius=0)
+        header_frame.pack(fill='x', padx=5, pady=5)
+        
+        # Create a flex container for header elements
+        header_frame.grid_columnconfigure(0, weight=1)
+        header_frame.grid_columnconfigure(1, weight=0)
+        header_frame.grid_columnconfigure(2, weight=0)
+        header_frame.grid_columnconfigure(3, weight=0)
+        header_frame.grid_columnconfigure(4, weight=0)
+        header_frame.grid_columnconfigure(5, weight=1)
+        
+        self.To_Left = CTkButton(header_frame, text='‹', command=lambda: self.Change_Frame(True), width=30,
+                            height=25, font=('Arial', 12), fg_color=CUSTOM_COLORS["secondary"], hover_color=CUSTOM_COLORS["accent"])
+        self.To_Left.grid(row=0, column=0, padx=(10, 5), pady=5, sticky='w')
 
-        self.Yes_Label = CTkLabel(self.Function, text='Yes', font=('Ariel', 10, 'bold'),
-                               fg_color=CUSTOM_COLORS["success"], text_color="white", width=40, height=25, corner_radius=5)
-        self.Yes_Label.place(x=150, y=5)
+        self.A_Label = CTkLabel(header_frame, text='Automations :', font=('Arial', 12, 'bold'), text_color=CUSTOM_COLORS["text"])
+        self.A_Label.grid(row=0, column=1, padx=5, pady=5)
 
-        self.No_Label = CTkLabel(self.Function, text='No', font=('Ariel', 10, 'bold'),
-                              fg_color=CUSTOM_COLORS["error"], text_color="white", width=40, height=25, corner_radius=5)
-        self.No_Label.place(x=200, y=5)
+        self.Yes_Label = CTkLabel(header_frame, text='Yes', font=('Arial', 10, 'bold'),
+                             fg_color=CUSTOM_COLORS["success"], text_color="white", width=40, height=25, corner_radius=5)
+        self.Yes_Label.grid(row=0, column=2, padx=5, pady=5)
 
-        self.To_Right = CTkButton(self.Function, text='›', command=lambda: self.Change_Frame(False), width=30,
-                               height=25, font=('Ariel', 12), fg_color=CUSTOM_COLORS["secondary"], hover_color=CUSTOM_COLORS["accent"])
-        self.To_Right.place(x=290, y=5)
+        self.No_Label = CTkLabel(header_frame, text='No', font=('Arial', 10, 'bold'),
+                            fg_color=CUSTOM_COLORS["error"], text_color="white", width=40, height=25, corner_radius=5)
+        self.No_Label.grid(row=0, column=3, padx=5, pady=5)
+        
+        self.To_Right = CTkButton(header_frame, text='›', command=lambda: self.Change_Frame(False), width=30,
+                            height=25, font=('Arial', 12), fg_color=CUSTOM_COLORS["secondary"], hover_color=CUSTOM_COLORS["accent"])
+        self.To_Right.grid(row=0, column=5, padx=(5, 10), pady=5, sticky='e')
 
-        self.To_Left = CTkButton(self.Function, text='‹', command=lambda: self.Change_Frame(True), width=30,
-                              height=25, font=('Ariel', 12), fg_color=CUSTOM_COLORS["secondary"], hover_color=CUSTOM_COLORS["accent"])
-        self.To_Left.place(x=10, y=5)
+        # Create a button container frame
+        button_container = CTkFrame(self.Function, fg_color=CUSTOM_COLORS["background"], corner_radius=0)
+        button_container.pack(fill='both', expand=True, padx=5, pady=5)
+        
+        # MAKE BUTTONS
+        Button_Names = [KEY for KEY in self.Function_Invoke]
+        self.No_Function = len(Button_Names)
+        Frame_Group = [Button_Names[i:i + 6] for i in range(0, self.No_Function, 6)]
+        self.Max_AutoFrame = len(Frame_Group)
+        self.Frame_Map = {}
+        for i in range(self.Default_AutoFrame, self.Max_AutoFrame + 1):
+            self.Frame_Map[i] = Frame_Group[i - 1]
 
-        # Button positions
+        # Calculate button positions with consistent spacing
+        btn_width = 145
+        btn_height = 30
+        h_padding = 10
+        v_padding = 10
+        
+        left_x = h_padding
+        right_x = button_container.winfo_reqwidth() - btn_width - h_padding if button_container.winfo_reqwidth() > 0 else 175
+        
         self.Button_OBJS = {
-            'NW': [CTkButton(self.Function, text='', command='', width=160, height=30,
-                          font=('Ariel', 10, 'bold'), fg_color=CUSTOM_COLORS["secondary"], text_color="white",
-                          corner_radius=8, hover_color=CUSTOM_COLORS["accent"]), 10, 40],
-            'NE': [CTkButton(self.Function, text='', command='', width=160, height=30,
-                          font=('Ariel', 10, 'bold'), fg_color=CUSTOM_COLORS["secondary"], text_color="white",
-                          corner_radius=8, hover_color=CUSTOM_COLORS["accent"]), 170, 40],
-            'W': [CTkButton(self.Function, text='', command='', width=160, height=30,
-                         font=('Ariel', 10, 'bold'), fg_color=CUSTOM_COLORS["secondary"], text_color="white",
-                         corner_radius=8, hover_color=CUSTOM_COLORS["accent"]), 10, 80],
-            'E': [CTkButton(self.Function, text='', command='', width=160, height=30,
-                         font=('Ariel', 10, 'bold'), fg_color=CUSTOM_COLORS["secondary"], text_color="white",
-                         corner_radius=8, hover_color=CUSTOM_COLORS["accent"]), 170, 80],
-            'SW': [CTkButton(self.Function, text='', command='', width=160, height=30,
-                          font=('Ariel', 10, 'bold'), fg_color=CUSTOM_COLORS["secondary"], text_color="white",
-                          corner_radius=8, hover_color=CUSTOM_COLORS["accent"]), 10, 120],
-            'SE': [CTkButton(self.Function, text='', command='', width=160, height=30,
-                          font=('Ariel', 10, 'bold'), fg_color=CUSTOM_COLORS["secondary"], text_color="white",
-                          corner_radius=8, hover_color=CUSTOM_COLORS["accent"]), 170, 120]
+            'NW': [CTkButton(button_container, text='', command='', width=btn_width, height=btn_height,
+                        font=('Arial', 10, 'bold'), fg_color=CUSTOM_COLORS["secondary"], text_color="white",
+                        corner_radius=8, hover_color=CUSTOM_COLORS["accent"]), left_x, v_padding],
+            'NE': [CTkButton(button_container, text='', command='', width=btn_width, height=btn_height,
+                        font=('Arial', 10, 'bold'), fg_color=CUSTOM_COLORS["secondary"], text_color="white",
+                        corner_radius=8, hover_color=CUSTOM_COLORS["accent"]), right_x, v_padding],
+            'W': [CTkButton(button_container, text='', command='', width=btn_width, height=btn_height,
+                       font=('Arial', 10, 'bold'), fg_color=CUSTOM_COLORS["secondary"], text_color="white",
+                       corner_radius=8, hover_color=CUSTOM_COLORS["accent"]), left_x, v_padding*2 + btn_height],
+            'E': [CTkButton(button_container, text='', command='', width=btn_width, height=btn_height,
+                       font=('Arial', 10, 'bold'), fg_color=CUSTOM_COLORS["secondary"], text_color="white",
+                       corner_radius=8, hover_color=CUSTOM_COLORS["accent"]), right_x, v_padding*2 + btn_height],
+            'SW': [CTkButton(button_container, text='', command='', width=btn_width, height=btn_height,
+                        font=('Arial', 10, 'bold'), fg_color=CUSTOM_COLORS["secondary"], text_color="white",
+                        corner_radius=8, hover_color=CUSTOM_COLORS["accent"]), left_x, v_padding*3 + btn_height*2],
+            'SE': [CTkButton(button_container, text='', command='', width=btn_width, height=btn_height,
+                        font=('Arial', 10, 'bold'), fg_color=CUSTOM_COLORS["secondary"], text_color="white",
+                        corner_radius=8, hover_color=CUSTOM_COLORS["accent"]), right_x, v_padding*3 + btn_height*2]
         }
         self.Change_Frame(True)
 
     def Config_Frame(self):
-        self.Config = CTkFrame(self.Window, width=335, height=103, corner_radius=10, fg_color=CUSTOM_COLORS["background"])
-        self.Config.grid(row=3, column=0, padx=10, pady=5, columnspan=5, sticky='w')
+        self.Config = CTkFrame(self.left_panel, corner_radius=10, fg_color=CUSTOM_COLORS["background"])
+        self.Config.grid(row=2, column=0, padx=10, pady=5, sticky='ew')
+        self.Config.grid_propagate(False)
+        self.Config.configure(height=100)
 
-        self.C_Label = CTkLabel(self.Config, text='Configuration', font=('Ariel', 12, 'bold'), text_color=CUSTOM_COLORS["text"])
-        self.C_Label.place(x=10, y=5)
+        # Create header with flex layout
+        header_frame = CTkFrame(self.Config, fg_color=CUSTOM_COLORS["background"], corner_radius=0)
+        header_frame.pack(fill='x', padx=5, pady=5)
+        header_frame.grid_columnconfigure(0, weight=1)
+        header_frame.grid_columnconfigure(1, weight=0)
+        
+        title_frame = CTkFrame(header_frame, fg_color=CUSTOM_COLORS["background"], corner_radius=0)
+        title_frame.grid(row=0, column=0, sticky='w')
+        
+        self.C_Label = CTkLabel(title_frame, text='Configuration', font=('Arial', 12, 'bold'), text_color=CUSTOM_COLORS["text"])
+        self.C_Label.pack(side=tk.LEFT, padx=5)
 
-        self.C_Status = CTkLabel(self.Config, font=('Ariel', 12, 'bold'), text_color=CUSTOM_COLORS["text"])
-        self.C_Status.place(x=150, y=5)
+        self.C_Status = CTkLabel(title_frame, font=('Arial', 12, 'bold'), text_color=CUSTOM_COLORS["text"])
+        self.C_Status.pack(side=tk.LEFT, padx=5)
 
-        self.C_Ins = CTkLabel(self.Config, font=('Ariel', 9), text_color=CUSTOM_COLORS["text"])
-        self.C_Ins.place(x=10, y=30)
+        instructions_frame = CTkFrame(self.Config, fg_color=CUSTOM_COLORS["background"], corner_radius=0)
+        instructions_frame.pack(fill='x', padx=10, pady=2)
+        
+        self.C_Ins = CTkLabel(instructions_frame, font=('Arial', 9), text_color=CUSTOM_COLORS["text"], wraplength=320)
+        self.C_Ins.pack(fill='x')
+
+        # Create button container with flex layout
+        button_frame = CTkFrame(self.Config, fg_color=CUSTOM_COLORS["background"], corner_radius=0)
+        button_frame.pack(fill='x', padx=10, pady=10)
+        button_frame.grid_columnconfigure(0, weight=1)
+        button_frame.grid_columnconfigure(1, weight=1)
 
         config_button_color = CUSTOM_COLORS["secondary"]
         if self.C_Exists:
@@ -169,82 +290,269 @@ class AutoAuto():
             self.C_Status.configure(text='[X]', text_color=CUSTOM_COLORS["error"])
             config_button_text = 'Create Config'
 
-        self.Schedule_B = CTkButton(self.Config, text=config_button_text, command=self.C_Driver, width=140,
-                                 height=35, font=('Ariel', 12, 'bold'), fg_color=config_button_color,
-                                 hover_color=CUSTOM_COLORS["accent"], corner_radius=8)
-        self.Schedule_B.place(x=10, y=60)
+        self.Config_B = CTkButton(button_frame, text=config_button_text, command=self.C_Driver, 
+                               height=35, font=('Arial', 12, 'bold'), fg_color=config_button_color,
+                               hover_color=CUSTOM_COLORS["accent"], corner_radius=8)
+        self.Config_B.grid(row=0, column=0, padx=5, pady=5, sticky='ew')
 
-        self.Refresh_Auto = CTkButton(self.Config, text='Refresh', command=self.Refresh_GUI, width=140,
-                                  height=35, font=('Ariel', 12, 'bold'), fg_color=CUSTOM_COLORS["secondary"],
-                                  hover_color=CUSTOM_COLORS["accent"], corner_radius=8)
-        self.Refresh_Auto.place(x=160, y=60)
+        self.Refresh_Auto = CTkButton(button_frame, text='Refresh', command=self.Refresh_GUI, 
+                                height=35, font=('Arial', 12, 'bold'), fg_color=CUSTOM_COLORS["secondary"],
+                                hover_color=CUSTOM_COLORS["accent"], corner_radius=8)
+        self.Refresh_Auto.grid(row=0, column=1, padx=5, pady=5, sticky='ew')
+
+    def Refresh_GUI(self):
+        self.Read_Automations()
+        Button_Names = [KEY for KEY in self.Function_Invoke]
+        self.No_Function = len(Button_Names)
+        Frame_Group = [Button_Names[i:i + 6] for i in range(0, self.No_Function, 6)]
+        self.Max_AutoFrame = len(Frame_Group)
+        self.Frame_Map = {}
+        for i in range(self.Default_AutoFrame, self.Max_AutoFrame + 1):
+            self.Frame_Map[i] = Frame_Group[i - 1]
+        self.Change_Frame(True)
+        self.Update_Console("Automations refreshed successfully.")
 
     def Timer_Frame(self):
-        self.Timer = CTkFrame(self.Window, width=335, height=160, corner_radius=10, fg_color=CUSTOM_COLORS["background"])
-        self.Timer.grid(row=4, column=0, padx=10, pady=5, columnspan=5, sticky='w')
-
-        self.T_Label = CTkLabel(self.Timer, text='Auto-Scheduler', font=('Ariel', 12, 'bold'), text_color=CUSTOM_COLORS["text"])
-        self.T_Label.place(x=10, y=5)
-
-        self.F_Date = CTkLabel(self.Timer, text=f'(Date Format: MM/DD/YY)', font=('Ariel', 9), text_color=CUSTOM_COLORS["text"])
-        self.F_Date.place(x=10, y=30)
-
-        self.SD_Label = CTkLabel(self.Timer, text='Date :', font=('Ariel', 11, 'bold'), text_color=CUSTOM_COLORS["text"])
-        self.SD_Label.place(x=10, y=60)
-
-        date_frame = tk.Frame(self.Timer, bg=CUSTOM_COLORS["background"])
-        date_frame.place(x=60, y=60)
-
+        self.Timer = CTkFrame(self.left_panel, corner_radius=10, fg_color=CUSTOM_COLORS["background"])
+        self.Timer.grid(row=3, column=0, padx=10, pady=5, sticky='nsew')
+        
+        # Main container with proper layout
+        content_frame = CTkFrame(self.Timer, fg_color=CUSTOM_COLORS["background"], corner_radius=0)
+        content_frame.pack(fill='both', expand=True, padx=5, pady=5)
+        
+        # Header
+        header_frame = CTkFrame(content_frame, fg_color=CUSTOM_COLORS["background"], corner_radius=0)
+        header_frame.pack(fill='x', padx=5, pady=5)
+        
+        self.T_Label = CTkLabel(header_frame, text='Auto-Scheduler', font=('Arial', 14, 'bold'), text_color=CUSTOM_COLORS["text"])
+        self.T_Label.pack()
+        
+        self.F_Date = CTkLabel(header_frame, text=f'(Date Format: MM/DD/YY)', font=('Arial', 9), text_color=CUSTOM_COLORS["text"])
+        self.F_Date.pack(pady=2)
+        
+        # Date/Time picker frame with flex layout
+        picker_frame = CTkFrame(content_frame, fg_color=CUSTOM_COLORS["background"], corner_radius=0)
+        picker_frame.pack(fill='x', padx=10, pady=10)
+        picker_frame.grid_columnconfigure(0, weight=0)
+        picker_frame.grid_columnconfigure(1, weight=1)
+        picker_frame.grid_columnconfigure(2, weight=0)
+        picker_frame.grid_columnconfigure(3, weight=1)
+        
+        # Date picker
+        self.SD_Label = CTkLabel(picker_frame, text='Date:', font=('Arial', 11, 'bold'), text_color=CUSTOM_COLORS["text"])
+        self.SD_Label.grid(row=0, column=0, padx=5, pady=5, sticky='e')
+        
+        date_frame = tk.Frame(picker_frame, bg=CUSTOM_COLORS["background"])
+        date_frame.grid(row=0, column=1, padx=5, pady=5, sticky='w')
+        
         self.Calendar = DateEntry(date_frame, width=12, background='darkblue', foreground='white', borderwidth=1)
         self.Calendar.pack()
-
-        self.ST_Label = CTkLabel(self.Timer, text='Time :', font=('Ariel', 11, 'bold'), text_color=CUSTOM_COLORS["text"])
-        self.ST_Label.place(x=160, y=60)
-
-        time_frame = tk.Frame(self.Timer, bg=CUSTOM_COLORS["background"])
-        time_frame.place(x=210, y=60)
-
+        
+        # Time picker
+        self.ST_Label = CTkLabel(picker_frame, text='Time:', font=('Arial', 11, 'bold'), text_color=CUSTOM_COLORS["text"])
+        self.ST_Label.grid(row=0, column=2, padx=5, pady=5, sticky='e')
+        
+        time_frame = tk.Frame(picker_frame, bg=CUSTOM_COLORS["background"])
+        time_frame.grid(row=0, column=3, padx=5, pady=5, sticky='w')
+        
         self.Time = SpinTimePickerModern(time_frame)
         self.Time.addAll(constants.HOURS24)
-        self.Time.configureAll(bg=CUSTOM_COLORS["background"], height=1, fg="white", font=("Ariel", 11, 'bold'),
-                            hoverbg=CUSTOM_COLORS["accent"], hovercolor="white", clickedbg="black", clickedcolor="white")
+        self.Time.configureAll(
+            bg=CUSTOM_COLORS["background"], 
+            height=1, 
+            fg="white", 
+            font=("Arial", 11, 'bold'),
+            hoverbg=CUSTOM_COLORS["accent"], 
+            hovercolor="white", 
+            clickedbg="black", 
+            clickedcolor="white"
+        )
         self.Time.configure_separator(bg=CUSTOM_COLORS["accent"], fg="#ffffff")
         self.Time.set24Hrs(self.Current_Time[0])
         self.Time.setMins(self.Current_Time[1])
         self.Time.pack()
-
-        self.Run_B = CTkButton(self.Timer, text='Run', command=self.Run, width=140, height=35,
-                            font=('Ariel', 12, 'bold'), fg_color=CUSTOM_COLORS["error"], hover_color=CUSTOM_COLORS["warning"],
-                            corner_radius=8)
-        self.Run_B.place(x=10, y=110)
-
-        self.Schedule_B = CTkButton(self.Timer, text='Schedule', command=self.Schedule, width=140, height=35,
-                                font=('Ariel', 12, 'bold'), fg_color=CUSTOM_COLORS["success"], hover_color=CUSTOM_COLORS["accent"],
-                                corner_radius=8)
-        self.Schedule_B.place(x=160, y=110)
+        
+        # Buttons container with flex layout
+        button_frame = CTkFrame(content_frame, fg_color=CUSTOM_COLORS["background"], corner_radius=0)
+        button_frame.pack(fill='x', padx=10, pady=10)
+        button_frame.grid_columnconfigure(0, weight=1)
+        button_frame.grid_columnconfigure(1, weight=1)
+        
+        self.Run_B = CTkButton(button_frame, text='Run', command=self.Run,
+                           font=('Arial', 12, 'bold'), fg_color=CUSTOM_COLORS["error"], 
+                           hover_color=CUSTOM_COLORS["warning"], corner_radius=8)
+        self.Run_B.grid(row=0, column=0, padx=5, pady=5, sticky='ew')
+        
+        self.Schedule_B = CTkButton(button_frame, text='Schedule', command=self.Schedule,
+                               font=('Arial', 12, 'bold'), fg_color=CUSTOM_COLORS["success"], 
+                               hover_color=CUSTOM_COLORS["accent"], corner_radius=8)
+        self.Schedule_B.grid(row=0, column=1, padx=5, pady=5, sticky='ew')
 
     def Console_Frame(self):
-        self.Console_Frame = CTkFrame(self.Window, width=335, height=405, corner_radius=10, fg_color=CUSTOM_COLORS["background"])
-        self.Console_Frame.place(x=350, y=66)
-
-        self.Console_Out = ScrolledText(self.Console_Frame, width=65, height=26, bg=CUSTOM_COLORS["background"],
-                                    font=("Consolas", 10), fg=CUSTOM_COLORS["text"])
-        self.Console_Out.pack(fill="both", side="left", expand=True, padx=5, pady=5)
-
-        self.Curr_Data = "Hello there.\nThis is a standard console.\nYour Automation states, outputs, error will appear here.\nThis Window will Keep you updated."
-        self.Console_Out.bind('<Control-v>', lambda _: 'break')
-        self.Console_Out.bind('<BackSpace>', lambda _: 'break')
+        console_container = CTkFrame(self.right_panel, fg_color=CUSTOM_COLORS["background"], corner_radius=0)
+        console_container.pack(fill='both', expand=True, padx=10, pady=10)
+        
+        # Use a consistent color for the ScrolledText widget that matches the theme
+        self.Console_Out = ScrolledText(
+            console_container, 
+            wrap='word',
+            bg=CUSTOM_COLORS["background"],
+            font=("Consolas", 10),
+            fg=CUSTOM_COLORS["text"]
+        )
+        self.Console_Out.pack(fill="both", expand=True, padx=5, pady=5)
+        
+        # Make console read-only
+        self.Console_Out.bind('<Key>', lambda e: 'break')
+        
+        self.Curr_Data = "Welcome to Auto Automation!\n\nThis console will display automation status, outputs, and errors.\nYou can monitor your tasks here."
         self.Update_Console(self.Curr_Data)
-        self.Update_Console("If Configuration Frame doesn't work:\nPlease check for stray MS Excel Application in the task manager.\nThen use 'End task'.")
+        self.Update_Console("\nTIP: If Configuration issues occur, check for stray Excel processes in Task Manager and end them.")
 
     def Update_Console(self, WData):
         self.Curr_Data += WData
         WData += '\n-----------\n'
+        self.Console_Out.configure(state='normal')
         self.Console_Out.insert('end', WData)
+        self.Console_Out.see('end')  # Auto-scroll to bottom
+        self.Console_Out.configure(state='disabled')
+
+    def C_Driver(self):
+        if self.C_Exists:
+            ConfigBook = xlwings.Book(self.CTarget)
+        else:
+            self.Config_MAKE()
+            self.Config_Frame()
+
+    def Config_MAKE(self):
+        self.C_Exists = True
+        Create_WB = xlwings.Book()
+        Create_WB.sheets('Sheet1').api.Name = 'Configuration'
+        Con_Sheet = Create_WB.sheets('Configuration')
+        Con_Sheet.range('A1').value = 'Automation Name'
+        Con_Sheet.range('B1').value = 'Main Script(s)'
+        Con_Sheet.range('C1').value = 'Template (If any)'
+        Con_Sheet.range('D1').value = 'Interpreter'
+        Con_Sheet.range('F1').value = '//After adding/updating Automation Paths, Please use refresh button in the App'
+        Con_Sheet.range('A1:D1').color = (255, 0, 0)
+        Con_Sheet.range('A1:D1').font.color = (255, 255, 255)
+        Con_Sheet.range('A1:D1').font.bold = True
+        Con_Sheet.range('A1:D1').font.size = 13
+        Con_Sheet.range('F1').font.italic = True
+        Con_Sheet.range('A1:D1').api.Borders.Weight = 3
+        Con_Sheet.range('A1:D1').autofit()
+        Con_Sheet.range('A1:D1').api.HorizontalAlignment = xlwings.constants.HAlign.xlHAlignCenter
+        Con_Sheet.range('A1:D1').api.VerticalAlignment = xlwings.constants.VAlign.xlVAlignCenter
+        Create_WB.save(self.CTarget)
+        Create_WB.close()
+
+    def Toggle_Function(self, Loc, Fname):
+        Status = self.Function_Invoke[Fname][1]
+        if Status:
+            ChangeColor = CUSTOM_COLORS["error"]  # Red
+        else:
+            ChangeColor = CUSTOM_COLORS["success"]  # Green
+        self.Button_OBJS[Loc][0].configure(fg_color=ChangeColor)
+        self.Function_Invoke[Fname][1] = not Status
+
+    def Data_Structures(self):
+        self.Py_Interpreter = r'C:\Program Files\PYTHON3.12\python.exe'
+        self.OutBound = [100000, 100000]
+        self.Button_Names = ['NW', 'NE', 'W', 'E', 'SW', 'SE']
+        self.Default_AutoFrame = 1
+        self.Max_AutoFrame = 1
+        self.FrameWise_Automation = {}
+        self.Trigger_Cancel = False
+        self.Function_Invoke = {}
+        self.Config_Avail = False
+        self.Current_Time = datetime.datetime.now().strftime('%H:%M').split(':')
+        self.CTarget = os.getcwd() + '\\Config.xlsx'
+        self.C_Exists = os.path.exists(self.CTarget)
+        self.Wait_Period = 0
+        self.Busy = False
+
+    def Schedule(self):
+        Chosen_Func = [Key for Key in self.Function_Invoke if self.Function_Invoke[Key][1]]
+        if len(Chosen_Func) == 0:
+            self.Update_Console('No Function is selected to be scheduled.')
+        else:
+            Funcs = ", ".join(Chosen_Func)
+            self.Update_Console("Selected Function(s): " + Funcs)
+            self.Wait_Period = self.Run_Schedule_Update()
+            if self.Wait_Period == 0:
+                self.Update_Console('Please choose a time in the future. Else use "Run" Button.')
+            else:
+                self.Busy = True
+                if self.Busy:
+                    T = self.Time.time()
+                    T = str(T[0]) + ':' + str(T[1])
+                    self.Update_Console('Task scheduled for ' + T + ' at ' + str(self.Calendar.get_date()) + '.')
+                    Thread(target=self.Start_Wait).start()
+                    self.Schedule_B.configure(command=self.Cancel_Schedule, text='Cancel', fg_color=CUSTOM_COLORS["error"])
+
+    def Cancel_Schedule(self):
+        self.Trigger_Cancel = True
+
+    def Run(self):
+        Chosen_Func = [Key for Key in self.Function_Invoke if self.Function_Invoke[Key][1]]
+        if len(Chosen_Func) == 0:
+            self.Update_Console('No Function is selected to run.')
+        else:
+            Funcs = ", ".join(Chosen_Func)
+            self.Update_Console("Selected Function(s): " + Funcs)
+            self.Wait_Period = 0
+            self.Update_Console('Running Task(s)')
+            Thread(target=self.Start_Wait).start()
+            self.Run_B.configure(text='Running', state="disabled", fg_color=CUSTOM_COLORS["secondary"])
+    
+    def Start_Wait(self):
+        try:
+            if self.Busy:
+                Time_to_wait = self.Run_Schedule_Update()
+                self.Update_Console('Schedule is created. Tasks will be triggered at the specified time.')
+                while self.Trigger_Cancel == False and Time_to_wait > 0:
+                    time.sleep(1)
+                    Time_to_wait -= 1
+                if self.Trigger_Cancel:
+                    self.Update_Console('Schedule has been cancelled.')
+                    self.Trigger_Cancel = not self.Trigger_Cancel
+                    return
+
+            To_Be_Done = [Key for Key in self.Function_Invoke if self.Function_Invoke[Key][1]]
+            for Auto in To_Be_Done:
+                self.Update_Console(f'Executing: {Auto}')
+                if not os.path.exists(self.Py_Interpreter):
+                    self.Py_Interpreter = 'python'
+                Script, _, Template = self.Function_Invoke[Auto]
+                Script, Template = str(Script), str(Template)
+                if not os.path.exists(Script):
+                    self.Update_Console(f'{Auto} Script: {Script} || Not Found || Not Executed')
+                    continue
+                if not os.path.exists(Template):
+                    self.Update_Console(f'{Auto} Template: {Template} || Not Found')
+                    Template = ''
+
+                LogOut = subprocess.run([self.Py_Interpreter, Script, Template], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                Out = LogOut.stdout.decode('utf-8', 'ignore')
+                Err = LogOut.stderr.decode('utf-8', 'ignore')
+                if Out != '':
+                    self.Update_Console('Output: ' + Out)
+                if Err != '':
+                    self.Update_Console('Error: ' + Err)
+                self.Update_Console(f'Finished: {Auto}')
+        except Exception as e:
+            self.Update_Console(f'{traceback.format_exc()}')
+        finally:
+            self.Update_Console('Tasks successfully completed.')
+            self.Busy = False
+            self.Schedule_B.configure(command=self.Schedule, text='Schedule', fg_color=CUSTOM_COLORS["success"])
+            self.Run_B.configure(command=self.Run, text='Run', state="normal", fg_color=CUSTOM_COLORS["error"])
 
     def Start_Window(self):
         self.Window.mainloop()
 
+
+# This needs to be OUTSIDE the class definition
 if __name__ == "__main__":
     Instance = AutoAuto()
     Instance.Start_Window()
