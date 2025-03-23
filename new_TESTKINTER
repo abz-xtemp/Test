@@ -167,7 +167,65 @@ class AutoAuto:
         self.Timer_Frame()
         self.Console_Frame()
 
-    # ... (rest of your original AutoAuto class code)
+    def Read_Automations(self):
+        if self.C_Exists:
+            try:
+                Auto_DF = pd.read_excel(self.CTarget, sheet_name='Configuration')
+                
+                # Check if required columns exist
+                required_columns = ['Automation Name', 'Main Script(s)', 'Template (If any)', 'Interpreter']
+                if not all(column in Auto_DF.columns for column in required_columns):
+                    self.Update_Console("Error: Required columns are missing in the Excel file.")
+                    return
+                
+                # Check if there is at least one row of data
+                if Auto_DF.empty:
+                    self.Update_Console("Error: No data found in the Excel file.")
+                    return
+                
+                # Read data
+                Automations = Auto_DF['Automation Name']
+                Main_Script = Auto_DF['Main Script(s)']
+                Template = Auto_DF['Template (If any)']
+                self.Py_Interpreter = str(Auto_DF['Interpreter'].iloc[0])  # Get the first interpreter
+                
+                # Populate Function_Invoke dictionary
+                self.Function_Invoke = {}
+                for A, M, T in zip(Automations, Main_Script, Template):
+                    self.Function_Invoke[A] = [M, False, T]
+            
+            except Exception as e:
+                self.Update_Console(f"Error reading Excel file: {str(e)}")
+        else:
+            self.Update_Console("Configuration file not found. Please create one.")
+
+    def C_Driver(self):
+        if self.C_Exists:
+            try:
+                ConfigBook = xlwings.Book(self.CTarget)
+            except Exception as e:
+                self.Update_Console(f"Error opening Excel file: {str(e)}")
+        else:
+            self.Config_MAKE()
+            self.Config_Frame()
+
+    def Data_Structures(self):
+        self.Py_Interpreter = 'python'  # Default interpreter
+        self.OutBound = [100000, 100000]
+        self.Button_Names = ['NW', 'NE', 'W', 'E', 'SW', 'SE']
+        self.Default_AutoFrame = 1
+        self.Max_AutoFrame = 1
+        self.FrameWise_Automation = {}
+        self.Trigger_Cancel = False
+        self.Function_Invoke = {}
+        self.Config_Avail = False
+        self.Current_Time = datetime.datetime.now().strftime('%H:%M').split(':')
+        self.CTarget = os.getcwd() + '\\Config.xlsx'
+        self.C_Exists = os.path.exists(self.CTarget)
+        self.Wait_Period = 0
+        self.Busy = False
+
+    # ... (rest of your AutoAuto class code)
 
     def Start_Window(self):
         self.Window.mainloop()
