@@ -1,0 +1,577 @@
+import os
+import re
+import pandas as pd
+import tempfile
+import pythoncom
+import win32com.client
+from tkinter import *
+from tkinter import filedialog
+from tkinter.scrolledtext import ScrolledText
+
+# Color scheme
+COLOR_SCHEME = {
+    "background": "#2c3e50",
+    "primary": "#3498db",
+    "secondary": "#2ecc71",
+    "highlight": "#e74c3c",
+    "accent": "#f39c12",
+    "success": "#27ae60",
+    "frame_bg": "#34495e",
+    "text": "#ecf0f1",
+    "button_bg": "#7f8c8d",
+    "button_fg": "#2c3e50",
+    "button_hover": "#95a5a6"
+}
+
+class RunOnce:
+    def __init__(self):
+        """Initialize the main application window and components"""
+        self.Window = Tk()
+        self.setup_window()
+        self.create_title_bar()
+        self.create_operation_buttons()
+        self.create_console()
+        self.Window.mainloop()
+
+    def setup_window(self):
+        """Configure the main window properties"""
+        self.Window.title('Run Once - File Automation Tool')
+        width, height = 650, 700
+        screen_width = self.Window.winfo_screenwidth()
+        screen_height = self.Window.winfo_screenheight()
+        x = (screen_width - width) // 2
+        y = (screen_height - height) // 2
+        self.Window.geometry(f'{width}x{height}+{x}+{y}')
+        self.Window.configure(bg=COLOR_SCHEME["background"])
+        self.Window.resizable(False, False)
+
+    def create_title_bar(self):
+        """Create the application title bar"""
+        title = Label(
+            self.Window,
+            text='Run Once: Select Your Automation',
+            font=('Arial', 16, 'bold'),
+            fg='white',
+            bg=COLOR_SCHEME["primary"],
+            padx=10,
+            pady=10
+        )
+        title.grid(row=0, column=0, columnspan=3, sticky='ew', padx=5, pady=10)
+
+    def create_operation_buttons(self):
+        """Create the initial operation selection buttons"""
+        button_frame = Frame(
+            self.Window,
+            bg=COLOR_SCHEME["frame_bg"],
+            highlightbackground="gray",
+            highlightthickness=1
+        )
+        button_frame.grid(row=1, column=0, padx=20, pady=20, sticky='nsew')
+
+        # Day Movement Button
+        Button(
+            button_frame,
+            text='📊 Day Movement',
+            command=self.setup_day_movement_ui,
+            font=('Arial', 12, 'bold'),
+            fg='white',
+            bg=COLOR_SCHEME["secondary"],
+            relief='flat',
+            activebackground=COLOR_SCHEME["button_hover"],
+            padx=20,
+            pady=10
+        ).pack(side=LEFT, padx=10, pady=10)
+
+        # PPT Merge Button
+        Button(
+            button_frame,
+            text='📑 Merge PPTs',
+            command=self.setup_ppt_merge_ui,
+            font=('Arial', 12, 'bold'),
+            fg='white',
+            bg=COLOR_SCHEME["highlight"],
+            relief='flat',
+            activebackground=COLOR_SCHEME["button_hover"],
+            padx=20,
+            pady=10
+        ).pack(side=LEFT, padx=10, pady=10)
+
+        # PPT to PDF Button
+        Button(
+            button_frame,
+            text='📄 PPT to PDF',
+            command=self.setup_ppt_to_pdf_ui,
+            font=('Arial', 12, 'bold'),
+            fg='white',
+            bg=COLOR_SCHEME["accent"],
+            relief='flat',
+            activebackground=COLOR_SCHEME["button_hover"],
+            padx=20,
+            pady=10
+        ).pack(side=LEFT, padx=10, pady=10)
+
+        # Dynamic content frame (initially hidden)
+        self.dynamic_content = Frame(
+            self.Window,
+            bg=COLOR_SCHEME["frame_bg"],
+            highlightbackground="gray",
+            highlightthickness=1
+        )
+        self.dynamic_content.grid(row=2, column=0, padx=20, pady=10, sticky='nsew')
+        self.dynamic_content.grid_remove()
+
+    def setup_day_movement_ui(self):
+        """Setup UI for Day Movement operation"""
+        self.clear_dynamic_content()
+        self.dynamic_content.grid()
+        self.current_operation = "day_movement"
+        
+        # File selection
+        self.create_file_input("Excel File 1:", 0)
+        self.create_file_input("Excel File 2:", 1)
+        
+        # Parameters
+        self.create_input_field("Sheet Name:", 2)
+        self.create_input_field("Cell Range (A1:K10):", 3)
+        
+        # Run button
+        self.create_run_button(self.run_day_movement, 4)
+
+    def setup_ppt_merge_ui(self):
+        """Setup UI for PPT Merge operation"""
+        self.clear_dynamic_content()
+        self.dynamic_content.grid()
+        self.current_operation = "ppt_merge"
+        
+        # File selection
+        self.create_file_input("PPT File A:", 0)
+        self.create_file_input("PPT File B:", 1)
+        
+        # Parameters
+        self.create_input_field("Slide to Merge:", 2)
+        self.create_input_field("Insert Position:", 3)
+        
+        # Run button
+        self.create_run_button(self.run_ppt_merge, 4)
+
+    def setup_ppt_to_pdf_ui(self):
+        """Setup UI for PPT to PDF conversion"""
+        self.clear_dynamic_content()
+        self.dynamic_content.grid()
+        self.current_operation = "ppt_to_pdf"
+        
+        # File selection
+        self.create_file_input("PPT File:", 0)
+        
+        # Run button
+        self.create_run_button(self.run_ppt_to_pdf, 1)
+
+    def create_file_input(self, label_text, row):
+        """Create a labeled file input with browse button"""
+        frame = Frame(self.dynamic_content, bg=COLOR_SCHEME["frame_bg"])
+        frame.grid(row=row, column=0, sticky='ew', padx=10, pady=5)
+        
+        Label(
+            frame,
+            text=label_text,
+            font=('Arial', 11),
+            fg=COLOR_SCHEME["text"],
+            bg=COLOR_SCHEME["frame_bg"],
+            width=15
+        ).pack(side=LEFT, padx=5)
+
+        entry = Entry(frame, width=40, font=('Arial', 10))
+        entry.pack(side=LEFT, expand=True, fill=X, padx=5)
+
+        Button(
+            frame,
+            text='Browse',
+            command=lambda: self.browse_file(entry),
+            font=('Arial', 10),
+            fg=COLOR_SCHEME["button_fg"],
+            bg=COLOR_SCHEME["button_bg"],
+            relief='flat',
+            activebackground=COLOR_SCHEME["button_hover"],
+            width=10
+        ).pack(side=LEFT, padx=5)
+
+        # Store reference to the entry widget
+        if not hasattr(self, 'file_entries'):
+            self.file_entries = []
+        self.file_entries.append(entry)
+
+    def create_input_field(self, label_text, row):
+        """Create a labeled input field"""
+        frame = Frame(self.dynamic_content, bg=COLOR_SCHEME["frame_bg"])
+        frame.grid(row=row, column=0, sticky='ew', padx=10, pady=5)
+        
+        Label(
+            frame,
+            text=label_text,
+            font=('Arial', 11),
+            fg=COLOR_SCHEME["text"],
+            bg=COLOR_SCHEME["frame_bg"],
+            width=15
+        ).pack(side=LEFT, padx=5)
+
+        entry = Entry(frame, width=40, font=('Arial', 10))
+        entry.pack(side=LEFT, expand=True, fill=X, padx=5)
+
+        # Store reference to the entry widget
+        if not hasattr(self, 'input_entries'):
+            self.input_entries = []
+        self.input_entries.append(entry)
+
+    def create_run_button(self, command, row):
+        """Create the run button for the current operation"""
+        Button(
+            self.dynamic_content,
+            text='RUN',
+            command=command,
+            font=('Arial', 12, 'bold'),
+            fg='white',
+            bg=COLOR_SCHEME["success"],
+            relief='flat',
+            activebackground=COLOR_SCHEME["button_hover"],
+            padx=20,
+            pady=5
+        ).grid(row=row, column=0, pady=20)
+
+    def clear_dynamic_content(self):
+        """Clear all widgets from the dynamic content frame"""
+        for widget in self.dynamic_content.winfo_children():
+            widget.destroy()
+        
+        # Clear stored entry references
+        if hasattr(self, 'file_entries'):
+            del self.file_entries
+        if hasattr(self, 'input_entries'):
+            del self.input_entries
+
+    def browse_file(self, entry_widget):
+        """Open file dialog and update entry widget"""
+        file_path = filedialog.askopenfilename()
+        if file_path:
+            entry_widget.delete(0, END)
+            entry_widget.insert(0, file_path)
+
+    def run_day_movement(self):
+        """Execute Day Movement operation"""
+        try:
+            file1 = self.file_entries[0].get()
+            file2 = self.file_entries[1].get()
+            sheet_name = self.input_entries[0].get()
+            cell_range = self.input_entries[1].get()
+
+            if not all([file1, file2, sheet_name, cell_range]):
+                self.update_console("Error: Please fill in all fields")
+                return
+
+            output_file = "Day_Movement_Output.xlsx"
+            result = self.process_day_movement(file1, file2, sheet_name, cell_range, output_file)
+
+            if result:
+                self.update_console(f"Success! Output saved as {output_file}")
+                self.show_download_button(result)
+            else:
+                self.update_console("Error processing files")
+
+        except Exception as e:
+            self.update_console(f"Error: {str(e)}")
+
+    def run_ppt_merge(self):
+        """Execute PPT Merge operation"""
+        try:
+            file1 = self.file_entries[0].get()
+            file2 = self.file_entries[1].get()
+            slide_num = self.input_entries[0].get()
+            position = self.input_entries[1].get()
+
+            if not all([file1, file2, slide_num, position]):
+                self.update_console("Error: Please fill in all fields")
+                return
+
+            output_file = "Merged_Presentation.pptx"
+            result = self.process_ppt_merge(file1, file2, slide_num, position)
+
+            if result:
+                self.update_console(f"Success! Output saved as {output_file}")
+                self.show_download_button(result)
+            else:
+                self.update_console("Error processing files")
+
+        except Exception as e:
+            self.update_console(f"Error: {str(e)}")
+
+    def run_ppt_to_pdf(self):
+        """Execute PPT to PDF conversion"""
+        try:
+            ppt_file = self.file_entries[0].get()
+
+            if not ppt_file:
+                self.update_console("Error: Please select a PPT file")
+                return
+
+            output_file = "Converted_Presentation.pdf"
+            result = self.process_ppt_to_pdf(ppt_file, output_file)
+
+            if result:
+                self.update_console(f"Success! PDF saved as {output_file}")
+                self.show_download_button(result)
+            else:
+                self.update_console("Error converting PPT to PDF")
+
+        except Exception as e:
+            self.update_console(f"Error: {str(e)}")
+
+    def process_day_movement(self, file1, file2, sheet_name, cell_range, output_file):
+        """Process Excel files for day movement calculation"""
+        try:
+            df1 = pd.read_excel(file1, sheet_name=sheet_name, engine="openpyxl")
+            df2 = pd.read_excel(file2, sheet_name=sheet_name, engine="openpyxl")
+
+            start_col, start_row, end_col, end_row = self.parse_cell_range(cell_range)
+
+            df1_values = df1.iloc[start_row:end_row, start_col:end_col].astype(float)
+            df2_values = df2.iloc[start_row:end_row, start_col:end_col].astype(float)
+            day_movement = df2_values - df1_values
+
+            df = pd.DataFrame(day_movement)
+
+            with pd.ExcelWriter(output_file, engine='openpyxl') as writer:
+                df.to_excel(writer, index=False, sheet_name='Day Movement')
+
+            return output_file
+
+        except Exception as e:
+            self.update_console(f"Processing error: {str(e)}")
+            return None
+
+    def process_ppt_merge(self, ppt_file_A, ppt_file_B, slide_to_merge, merge_position):
+        """Merge PowerPoint slides"""
+        try:
+            pythoncom.CoInitialize()
+            
+            # Create temporary files
+            with open(ppt_file_A, 'rb') as f1, open(ppt_file_B, 'rb') as f2:
+                ppt_data_A = f1.read()
+                ppt_data_B = f2.read()
+
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".pptx") as temp_A, \
+                 tempfile.NamedTemporaryFile(delete=False, suffix=".pptx") as temp_B:
+
+                temp_A.write(ppt_data_A)
+                temp_B.write(ppt_data_B)
+
+                temp_A_path = temp_A.name
+                temp_B_path = temp_B.name
+
+            # Create PowerPoint Application
+            pptApp = win32com.client.Dispatch("PowerPoint.Application")
+            pptApp.Visible = True
+            
+            # Open presentations
+            presentation_A = pptApp.Presentations.Open(temp_A_path, ReadOnly=False, WithWindow=True)
+            presentation_B = pptApp.Presentations.Open(temp_B_path, ReadOnly=False, WithWindow=True)
+
+            slides_A = presentation_A.Slides
+            slides_B = presentation_B.Slides
+            
+            # Validate inputs
+            slide_to_merge = int(slide_to_merge)
+            merge_position = int(merge_position)
+
+            if slide_to_merge < 1 or slide_to_merge > slides_A.Count:
+                raise ValueError(f"Invalid slide number {slide_to_merge} in PPT A!")
+            
+            if merge_position < 1 or merge_position > slides_B.Count + 1:
+                raise ValueError(f"Invalid merge position {merge_position} in PPT B!")
+
+            # Copy and paste slide
+            slides_A(slide_to_merge).Copy()
+            presentation_B.Windows(1).Activate()
+            slides_B.Paste(Index=merge_position)
+
+            # Save merged file
+            output_file = "Merged_Presentation.pptx"
+            presentation_B.SaveAs(output_file)
+
+            # Clean up
+            presentation_A.Close()
+            presentation_B.Close()
+            pptApp.Quit()
+            
+            try:
+                os.remove(temp_A_path)
+                os.remove(temp_B_path)
+            except:
+                pass
+
+            pythoncom.CoUninitialize()
+            
+            return output_file
+
+        except Exception as e:
+            error_msg = f"Error: {str(e)}"
+            self.update_console(error_msg)
+            
+            # Clean up resources
+            try:
+                if 'presentation_A' in locals():
+                    presentation_A.Close()
+            except:
+                pass
+                
+            try:
+                if 'presentation_B' in locals():
+                    presentation_B.Close()
+            except:
+                pass
+                
+            try:
+                if 'pptApp' in locals():
+                    pptApp.Quit()
+            except:
+                pass
+                
+            try:
+                pythoncom.CoUninitialize()
+            except:
+                pass
+                
+            return None
+
+    def process_ppt_to_pdf(self, ppt_file, output_file):
+        """Convert PowerPoint to PDF"""
+        try:
+            pythoncom.CoInitialize()
+            
+            # Create temporary file
+            with open(ppt_file, 'rb') as f:
+                ppt_data = f.read()
+
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".pptx") as temp_ppt:
+                temp_ppt.write(ppt_data)
+                temp_ppt_path = temp_ppt.name
+
+            # Create PowerPoint Application
+            pptApp = win32com.client.Dispatch("PowerPoint.Application")
+            pptApp.Visible = True
+            
+            # Open presentation
+            presentation = pptApp.Presentations.Open(temp_ppt_path, ReadOnly=False, WithWindow=True)
+
+            # Save as PDF
+            presentation.SaveAs(output_file, 32)  # 32 is the PDF format code
+            presentation.Close()
+            pptApp.Quit()
+            
+            try:
+                os.remove(temp_ppt_path)
+            except:
+                pass
+
+            pythoncom.CoUninitialize()
+            
+            return output_file
+
+        except Exception as e:
+            error_msg = f"Error: {str(e)}"
+            self.update_console(error_msg)
+            
+            # Clean up resources
+            try:
+                if 'presentation' in locals():
+                    presentation.Close()
+            except:
+                pass
+                
+            try:
+                if 'pptApp' in locals():
+                    pptApp.Quit()
+            except:
+                pass
+                
+            try:
+                pythoncom.CoUninitialize()
+            except:
+                pass
+                
+            return None
+
+    def parse_cell_range(self, cell_range):
+        """Convert Excel cell range to indices"""
+        match = re.match(r"([A-Z]+)(\d+):([A-Z]+)(\d+)", cell_range)
+        if not match:
+            raise ValueError("Invalid cell range format. Use format like 'A1:D10'.")
+
+        start_col, start_row, end_col, end_row = match.groups()
+
+        def col_to_index(col):
+            index = 0
+            for char in col:
+                index = index * 26 + (ord(char) - ord('A') + 1)
+            return index - 1
+
+        start_col_index = col_to_index(start_col)
+        start_row_index = int(start_row) - 1
+        end_col_index = col_to_index(end_col) + 1
+        end_row_index = int(end_row)
+
+        return start_col_index, start_row_index, end_col_index, end_row_index
+
+    def show_download_button(self, file_path):
+        """Show download button for the output file"""
+        if hasattr(self, 'download_button'):
+            self.download_button.destroy()
+
+        self.download_button = Button(
+            self.dynamic_content,
+            text='DOWNLOAD RESULT',
+            command=lambda: self.download_file(file_path),
+            font=('Arial', 12, 'bold'),
+            fg='white',
+            bg=COLOR_SCHEME["accent"],
+            relief='flat',
+            activebackground=COLOR_SCHEME["button_hover"],
+            padx=20,
+            pady=5
+        )
+        self.download_button.grid(row=5, column=0, pady=10)
+
+    def download_file(self, file_path):
+        """Open the output file"""
+        try:
+            os.startfile(file_path)
+        except Exception as e:
+            self.update_console(f"Error opening file: {str(e)}")
+
+    def create_console(self):
+        """Create the console output area"""
+        console_frame = Frame(
+            self.Window,
+            bg=COLOR_SCHEME["frame_bg"],
+            highlightbackground="gray",
+            highlightthickness=1
+        )
+        console_frame.grid(row=3, column=0, padx=20, pady=10, sticky='nsew')
+
+        self.console = ScrolledText(
+            console_frame,
+            width=70,
+            height=10,
+            bg=COLOR_SCHEME["frame_bg"],
+            fg=COLOR_SCHEME["text"],
+            font=('Consolas', 10)
+        )
+        self.console.pack(fill=BOTH, expand=True, padx=5, pady=5)
+        self.console.insert(END, "Ready...\n")
+        self.console.configure(state='disabled')
+
+    def update_console(self, message):
+        """Update the console with a new message"""
+        self.console.configure(state='normal')
+        self.console.insert(END, f"> {message}\n")
+        self.console.see(END)
+        self.console.configure(state='disabled')
+        self.Window.update()
