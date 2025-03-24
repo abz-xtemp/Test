@@ -1,6 +1,7 @@
 import os
 import re
 import pythoncom
+import comtypes.client
 import win32com.client
 import tempfile
 import pandas as pd
@@ -285,108 +286,60 @@ class RunOnce:
         except Exception as e:
             self.update_console(f"Error: {str(e)}")
 
-    def run_ppt_to_pdf(self):
-        """Execute PPT to PDF conversion"""
-        try:
-            ppt_file = self.file_entries[0].get()
-            
-            if not ppt_file:
-                self.update_console("Error: Please select a PowerPoint file")
-                return
-
-            # Get custom output name or use default
-            output_name = self.input_entries[0].get() if hasattr(self, 'input_entries') and len(self.input_entries) > 0 else None
-            output_file = output_name if output_name else "Converted_Presentation.pdf"
-            
-            # Ensure .pdf extension
-            if not output_file.lower().endswith('.pdf'):
-                output_file += '.pdf'
-
-            self.update_console(f"Starting conversion of: {os.path.basename(ppt_file)}")
-            result = self.process_ppt_to_pdf(ppt_file, output_file)
-
-            if result:
-                self.update_console(f"Success! PDF saved as: {output_file}")
-                self.show_download_button(result)
-            else:
-                self.update_console("Conversion failed. See error details above.")
-
-        except Exception as e:
-            self.update_console(f"Unexpected error: {str(e)}")
-
-    def process_ppt_to_pdf(self, ppt_file_path, output_pdf_path):
+    def process_ppt_to_pdf(self, input_ppt_path, output_pdf_path=None):
         """
-        Convert PowerPoint file to PDF with comprehensive error handling
-        Returns path to converted PDF if successful, None otherwise
+        Convert PowerPoint to PDF using comtypes with robust error handling
+        Returns path to PDF if successful, None otherwise
         """
-        # Initialize variables for cleanup
         powerpoint = None
-        presentation = None
-        temp_file_path = None
+        deck = None
         
         try:
-            # 1. Verify input file exists and is accessible
-            if not os.path.exists(ppt_file_path):
-                self.update_console(f"Error: Input file not found - {ppt_file_path}")
+            # Validate input file
+            if not os.path.exists(input_ppt_path):
+                self.update_console(f"Error: File not found - {input_ppt_path}")
                 return None
-                
-            if not os.access(ppt_file_path, os.R_OK):
-                self.update_console(f"Error: Cannot read input file - {ppt_file_path}")
-                return None
-
-            # 2. Create temporary working copy
-            try:
-                with open(ppt_file_path, 'rb') as f:
-                    ppt_data = f.read()
-                    
-                temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".pptx")
-                temp_file_path = temp_file.name
-                temp_file.write(ppt_data)
-                temp_file.close()
-            except Exception as e:
-                self.update_console(f"Error creating temporary file: {str(e)}")
+            
+            if not input_ppt_path.lower().endswith(('.ppt', '.pptx')):
+                self.update_console("Error: Input must be a PowerPoint file (.ppt or .pptx)")
                 return None
 
-            # 3. Initialize PowerPoint COM interface
+            # Set default output path if not provided
+            if output_pdf_path is None:
+                output_pdf_path = os.path.splitext(input_ppt_path)[0] + '.pdf'
+            elif not output_pdf_path.lower().endswith('.pdf'):
+                output_pdf_path += '.pdf'
+
+            self.update_console(f"Starting conversion: {os.path.basename(input_ppt_path)}")
+            
+            # Initialize PowerPoint
             try:
-                self.update_console("Starting PowerPoint...")
-                pythoncom.CoInitialize()
-                powerpoint = win32com.client.Dispatch("PowerPoint.Application")
-                powerpoint.Visible = False  # Run invisibly
-                powerpoint.DisplayAlerts = False  # Suppress alerts
+                powerpoint = comtypes.client.CreateObject("Powerpoint.Application")
+                powerpoint.Visible = 0  # Run in background
             except Exception as e:
                 self.update_console(f"Failed to start PowerPoint: {str(e)}")
-                self.update_console("Please ensure Microsoft PowerPoint is installed")
+                self.update_console("Please ensure PowerPoint is installed")
                 return None
 
-            # 4. Open the presentation
+            # Open presentation
             try:
                 self.update_console("Opening presentation...")
-                presentation = powerpoint.Presentations.Open(
-                    temp_file_path,
-                    WithWindow=False,
-                    ReadOnly=True
-                )
+                deck = powerpoint.Presentations.Open(input_ppt_path)
             except Exception as e:
                 self.update_console(f"Failed to open presentation: {str(e)}")
-                self.update_console("The file may be corrupted or not a valid PowerPoint file")
                 return None
 
-            # 5. Convert to PDF
+            # Convert to PDF
             try:
                 self.update_console("Converting to PDF...")
+                deck.SaveAs(output_pdf_path, FileFormat=32)  # 32 = PDF format
                 
-                # Ensure output directory exists
-                os.makedirs(os.path.dirname(output_pdf_path) or ".", exist_ok=True)
-                
-                # Save as PDF (format code 32)
-                presentation.SaveAs(output_pdf_path, 32)
-                
-                # Verify PDF was created
+                # Verify output
                 if not os.path.exists(output_pdf_path):
                     self.update_console("Error: PDF file was not created")
                     return None
                     
+                self.update_console(f"Successfully created: {os.path.basename(output_pdf_path)}")
                 return output_pdf_path
                 
             except Exception as e:
@@ -394,14 +347,14 @@ class RunOnce:
                 return None
 
         except Exception as e:
-            self.update_console(f"Unexpected error during conversion: {str(e)}")
+            self.update_console(f"Unexpected error: {str(e)}")
             return None
 
         finally:
-            # 6. Cleanup resources in proper order
+            # Cleanup in proper order
             try:
-                if presentation:
-                    presentation.Close()
+                if deck:
+                    deck.Close()
             except Exception as e:
                 self.update_console(f"Warning: Error closing presentation - {str(e)}")
 
@@ -411,16 +364,38 @@ class RunOnce:
             except Exception as e:
                 self.update_console(f"Warning: Error quitting PowerPoint - {str(e)}")
 
+            # Release COM objects
             try:
-                pythoncom.CoUninitialize()
-            except Exception as e:
-                self.update_console(f"Warning: Error releasing COM - {str(e)}")
+                if powerpoint:
+                    comtypes.client._manage(powerpoint, None, False)
+            except:
+                pass
 
-            try:
-                if temp_file_path and os.path.exists(temp_file_path):
-                    os.remove(temp_file_path)
-            except Exception as e:
-                self.update_console(f"Warning: Error removing temp file - {str(e)}")
+    # [Rest of the class implementation remains the same]
+
+    def run_ppt_to_pdf(self):
+        """Execute PPT to PDF conversion"""
+        try:
+            ppt_file = self.file_entries[0].get()
+            
+            if not ppt_file:
+                self.update_console("Error: Please select a PowerPoint file")
+                return
+
+            # Get custom output name if provided
+            output_name = self.input_entries[0].get() if hasattr(self, 'input_entries') and len(self.input_entries) > 0 else None
+            
+            self.update_console(f"Converting: {os.path.basename(ppt_file)}")
+            result = self.process_ppt_to_pdf(ppt_file, output_name)
+
+            if result:
+                self.update_console("Conversion successful!")
+                self.show_download_button(result)
+            else:
+                self.update_console("Conversion failed")
+
+        except Exception as e:
+            self.update_console(f"Error: {str(e)}")
 
     def process_day_movement(self, file1, file2, sheet_name, cell_range, output_file):
         """Process Excel files for day movement calculation"""
