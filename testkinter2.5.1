@@ -1,7 +1,6 @@
 import os
 import re
 import pythoncom
-import comtypes.client
 import win32com.client
 import tempfile
 import pandas as pd
@@ -10,7 +9,7 @@ from tkinter import filedialog
 from tkinter.scrolledtext import ScrolledText
 
 # Color scheme
-COLOR_SCHEME = {
+COLOR_SCHEME = {s
     "background": "#2c3e50",
     "primary": "#3498db",
     "secondary": "#2ecc71",
@@ -37,7 +36,7 @@ class RunOnce:
     def setup_window(self):
         """Configure the main window properties"""
         self.Window.title('Run Once - File Automation Tool')
-        width, height = 700, 750  # Slightly larger to accommodate all features
+        width, height = 700, 750
         screen_width = self.Window.winfo_screenwidth()
         screen_height = self.Window.winfo_screenheight()
         x = (screen_width - width) // 2
@@ -286,93 +285,6 @@ class RunOnce:
         except Exception as e:
             self.update_console(f"Error: {str(e)}")
 
-    def process_ppt_to_pdf(self, input_ppt_path, output_pdf_path=None):
-        """
-        Convert PowerPoint to PDF using comtypes with robust error handling
-        Returns path to PDF if successful, None otherwise
-        """
-        powerpoint = None
-        deck = None
-        
-        try:
-            # Validate input file
-            if not os.path.exists(input_ppt_path):
-                self.update_console(f"Error: File not found - {input_ppt_path}")
-                return None
-            
-            if not input_ppt_path.lower().endswith(('.ppt', '.pptx')):
-                self.update_console("Error: Input must be a PowerPoint file (.ppt or .pptx)")
-                return None
-
-            # Set default output path if not provided
-            if output_pdf_path is None:
-                output_pdf_path = os.path.splitext(input_ppt_path)[0] + '.pdf'
-            elif not output_pdf_path.lower().endswith('.pdf'):
-                output_pdf_path += '.pdf'
-
-            self.update_console(f"Starting conversion: {os.path.basename(input_ppt_path)}")
-            
-            # Initialize PowerPoint
-            try:
-                powerpoint = comtypes.client.CreateObject("Powerpoint.Application")
-                powerpoint.Visible = 0  # Run in background
-            except Exception as e:
-                self.update_console(f"Failed to start PowerPoint: {str(e)}")
-                self.update_console("Please ensure PowerPoint is installed")
-                return None
-
-            # Open presentation
-            try:
-                self.update_console("Opening presentation...")
-                deck = powerpoint.Presentations.Open(input_ppt_path)
-            except Exception as e:
-                self.update_console(f"Failed to open presentation: {str(e)}")
-                return None
-
-            # Convert to PDF
-            try:
-                self.update_console("Converting to PDF...")
-                deck.SaveAs(output_pdf_path, FileFormat=32)  # 32 = PDF format
-                
-                # Verify output
-                if not os.path.exists(output_pdf_path):
-                    self.update_console("Error: PDF file was not created")
-                    return None
-                    
-                self.update_console(f"Successfully created: {os.path.basename(output_pdf_path)}")
-                return output_pdf_path
-                
-            except Exception as e:
-                self.update_console(f"Conversion failed: {str(e)}")
-                return None
-
-        except Exception as e:
-            self.update_console(f"Unexpected error: {str(e)}")
-            return None
-
-        finally:
-            # Cleanup in proper order
-            try:
-                if deck:
-                    deck.Close()
-            except Exception as e:
-                self.update_console(f"Warning: Error closing presentation - {str(e)}")
-
-            try:
-                if powerpoint:
-                    powerpoint.Quit()
-            except Exception as e:
-                self.update_console(f"Warning: Error quitting PowerPoint - {str(e)}")
-
-            # Release COM objects
-            try:
-                if powerpoint:
-                    comtypes.client._manage(powerpoint, None, False)
-            except:
-                pass
-
-    # [Rest of the class implementation remains the same]
-
     def run_ppt_to_pdf(self):
         """Execute PPT to PDF conversion"""
         try:
@@ -389,13 +301,89 @@ class RunOnce:
             result = self.process_ppt_to_pdf(ppt_file, output_name)
 
             if result:
-                self.update_console("Conversion successful!")
+                self.update_console("Conversion successful! Click Download below")
                 self.show_download_button(result)
             else:
                 self.update_console("Conversion failed")
 
         except Exception as e:
             self.update_console(f"Error: {str(e)}")
+
+    def process_ppt_to_pdf(self, ppt_path, pdf_path=None):
+        """
+        Convert PowerPoint to PDF using win32com
+        Returns path to PDF if successful, None otherwise
+        """
+        powerpoint = None
+        presentation = None
+        
+        try:
+            # Validate input file
+            if not os.path.exists(ppt_path):
+                self.update_console(f"Error: File not found - {ppt_path}")
+                return None
+            
+            if not ppt_path.lower().endswith(('.ppt', '.pptx')):
+                self.update_console("Error: Input must be a PowerPoint file (.ppt or .pptx)")
+                return None
+
+            # Set default output path if not provided
+            if pdf_path is None:
+                pdf_path = os.path.splitext(ppt_path)[0] + '.pdf'
+            elif not pdf_path.lower().endswith('.pdf'):
+                pdf_path += '.pdf'
+
+            self.update_console("Starting PowerPoint conversion...")
+
+            # Initialize PowerPoint
+            try:
+                powerpoint = win32com.client.Dispatch("PowerPoint.Application")
+                powerpoint.Visible = False  # Run in background
+                powerpoint.DisplayAlerts = False  # Suppress alerts
+            except Exception as e:
+                self.update_console(f"Failed to start PowerPoint: {str(e)}")
+                self.update_console("Please ensure Microsoft PowerPoint is installed")
+                return None
+
+            # Open and convert presentation
+            try:
+                presentation = powerpoint.Presentations.Open(ppt_path, WithWindow=False)
+                presentation.SaveAs(pdf_path, 32)  # 32 = PDF format
+                
+                # Verify output
+                if not os.path.exists(pdf_path):
+                    self.update_console("Error: PDF file was not created")
+                    return None
+                    
+                self.update_console(f"Successfully created: {os.path.basename(pdf_path)}")
+                return pdf_path
+                
+            except Exception as e:
+                self.update_console(f"Conversion failed: {str(e)}")
+                return None
+
+        except Exception as e:
+            self.update_console(f"Unexpected error: {str(e)}")
+            return None
+
+        finally:
+            # Cleanup in proper order
+            try:
+                if presentation:
+                    presentation.Close()
+            except Exception as e:
+                self.update_console(f"Warning: Error closing presentation - {str(e)}")
+
+            try:
+                if powerpoint:
+                    powerpoint.Quit()
+            except Exception as e:
+                self.update_console(f"Warning: Error quitting PowerPoint - {str(e)}")
+
+            try:
+                pythoncom.CoUninitialize()
+            except Exception as e:
+                self.update_console(f"Warning: Error releasing COM - {str(e)}")
 
     def process_day_movement(self, file1, file2, sheet_name, cell_range, output_file):
         """Process Excel files for day movement calculation"""
@@ -537,13 +525,16 @@ class RunOnce:
 
     def show_download_button(self, file_path):
         """Show download button for the output file"""
-        if hasattr(self, 'download_button'):
-            self.download_button.destroy()
+        # Remove previous download button if exists
+        for widget in self.dynamic_content.winfo_children():
+            if isinstance(widget, Button) and widget['text'].startswith('Download'):
+                widget.destroy()
 
-        self.download_button = Button(
+        # Create new download button
+        Button(
             self.dynamic_content,
-            text='DOWNLOAD RESULT',
-            command=lambda: self.download_file(file_path),
+            text=f"Download {os.path.basename(file_path)}",
+            command=lambda: self.open_file(file_path),
             font=('Arial', 12, 'bold'),
             fg='white',
             bg=COLOR_SCHEME["accent"],
@@ -551,10 +542,9 @@ class RunOnce:
             activebackground=COLOR_SCHEME["button_hover"],
             padx=20,
             pady=5
-        )
-        self.download_button.grid(row=5, column=0, pady=10)
+        ).grid(row=5, column=0, pady=10)
 
-    def download_file(self, file_path):
+    def open_file(self, file_path):
         """Open the output file"""
         try:
             os.startfile(os.path.abspath(file_path))
