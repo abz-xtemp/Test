@@ -1,0 +1,146 @@
+def run_ppt_merge(self):
+    """Execute PPT Merge operation with multiple slides"""
+    try:
+        # Get input files
+        file1 = self.file_entries[0].get()
+        file2 = self.file_entries[1].get()
+        
+        # Get comma-separated slides and positions
+        slides_to_merge = self.input_entries[0].get()
+        merge_positions = self.input_entries[1].get()
+
+        # Validate inputs
+        if not all([file1, file2, slides_to_merge, merge_positions]):
+            self.update_console("Error: Please fill in all fields")
+            return
+
+        # Validate comma-separated format
+        if not ("," in slides_to_merge and "," in merge_positions):
+            self.update_console("Error: Please provide comma-separated values for both slides and positions")
+            return
+
+        # Process the merge
+        output_file = "Merged_Presentation.pptx"
+        result = self.process_ppt_merge(file1, file2, slides_to_merge, merge_positions)
+
+        if result:
+            self.update_console(f"Success! Merged {slides_to_merge} into positions {merge_positions}")
+            self.update_console(f"Output saved as {output_file}")
+            self.show_download_button(result)
+        else:
+            self.update_console("Error processing files - check if PowerPoint is installed")
+
+    except Exception as e:
+        self.update_console(f"Error: {str(e)}")
+        self.update_console("Format: '1,3,5' for slides and '2,4,6' for positions")
+
+
+-------------------
+
+
+def process_ppt_merge(self, ppt_file_A, ppt_file_B, slides_to_merge, merge_positions):
+    """Merge multiple PowerPoint slides from A to B at specified positions"""
+    try:
+        pythoncom.CoInitialize()
+        
+        # Create temporary files
+        with open(ppt_file_A, 'rb') as f1, open(ppt_file_B, 'rb') as f2:
+            ppt_data_A = f1.read()
+            ppt_data_B = f2.read()
+
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".pptx") as temp_A, \
+             tempfile.NamedTemporaryFile(delete=False, suffix=".pptx") as temp_B:
+
+            temp_A.write(ppt_data_A)
+            temp_B.write(ppt_data_B)
+
+            temp_A_path = temp_A.name
+            temp_B_path = temp_B.name
+
+        # Create PowerPoint Application
+        pptApp = win32com.client.Dispatch("PowerPoint.Application")
+        pptApp.Visible = True
+        
+        # Open presentations
+        presentation_A = pptApp.Presentations.Open(temp_A_path, ReadOnly=False, WithWindow=True)
+        presentation_B = pptApp.Presentations.Open(temp_B_path, ReadOnly=False, WithWindow=True)
+
+        slides_A = presentation_A.Slides
+        slides_B = presentation_B.Slides
+        
+        # Parse comma-separated inputs
+        try:
+            slides_to_merge = [int(s.strip()) for s in slides_to_merge.split(',')]
+            merge_positions = [int(p.strip()) for p in merge_positions.split(',')]
+        except ValueError:
+            raise ValueError("Slide numbers and positions must be comma-separated integers")
+
+        # Validate equal number of slides and positions
+        if len(slides_to_merge) != len(merge_positions):
+            raise ValueError("Number of slides to merge must match number of positions")
+
+        # Validate inputs
+        for slide_num in slides_to_merge:
+            if slide_num < 1 or slide_num > slides_A.Count:
+                raise ValueError(f"Invalid slide number {slide_num} in PPT A!")
+
+        for position in merge_positions:
+            if position < 1 or position > slides_B.Count + 1:
+                raise ValueError(f"Invalid merge position {position} in PPT B!")
+
+        # Process slides in reverse order to maintain correct positions
+        for slide_num, position in sorted(zip(slides_to_merge, merge_positions), 
+                                        key=lambda x: -x[0]):
+            # Copy and paste slide
+            slides_A(slide_num).Copy()
+            presentation_B.Windows(1).Activate()
+            slides_B.Paste(Index=position)
+
+        # Save merged file
+        output_file = "Merged_Presentation.pptx"
+        presentation_B.SaveAs(output_file)
+
+        # Clean up
+        presentation_A.Close()
+        presentation_B.Close()
+        pptApp.Quit()
+        
+        try:
+            os.remove(temp_A_path)
+            os.remove(temp_B_path)
+        except:
+            pass
+
+        pythoncom.CoUninitialize()
+        
+        return output_file
+
+    except Exception as e:
+        error_msg = f"Error: {str(e)}"
+        self.update_console(error_msg)
+        
+        # Clean up resources
+        try:
+            if 'presentation_A' in locals():
+                presentation_A.Close()
+        except:
+            pass
+            
+        try:
+            if 'presentation_B' in locals():
+                presentation_B.Close()
+        except:
+            pass
+            
+        try:
+            if 'pptApp' in locals():
+                pptApp.Quit()
+        except:
+            pass
+            
+        try:
+            pythoncom.CoUninitialize()
+        except:
+            pass
+            
+        return None
