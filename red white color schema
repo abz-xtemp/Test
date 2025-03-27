@@ -1,0 +1,13 @@
+COLOR_SCHEME = {
+    "background": "#ffffff",  # White (dominant)
+    "primary": "#db0011",     # HSBC red (primary brand color)
+    "secondary": "#000000",   # Black (accent)
+    "highlight": "#db0011",   # HSBC red for highlights
+    "accent": "#a6081d",      # Darker red for accents
+    "success": "#2e7d32",     # Green for success (kept for functionality)
+    "frame_bg": "#f5f5f5",    # Very light gray (almost white)
+    "text": "#000000",        # Black text for contrast
+    "button_bg": "#db0011",   # Red buttons
+    "button_fg": "#ffffff",   # White text on buttons
+    "button_hover": "#a6081d" # Darker red on hover
+}
