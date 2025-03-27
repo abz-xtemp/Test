@@ -1,0 +1,138 @@
+---open pyxl 
+  import io
+import openpyxl
+from openpyxl.utils import get_column_letter, column_index_from_string
+
+class RunOnce:
+    # [Previous methods remain unchanged until process_day_movement]
+
+    def process_day_movement(self, file1, file2, sheet_name, cell_range, output_file):
+        """
+        Process Excel files for day movement calculation using openpyxl
+        Returns path to output file if successful, None otherwise
+        """
+        try:
+            # Load workbooks
+            workbook1 = openpyxl.load_workbook(file1)
+            workbook2 = openpyxl.load_workbook(file2)
+            
+            # Get the sheets
+            try:
+                sheet1 = workbook1[sheet_name]
+                sheet2 = workbook2[sheet_name]
+            except KeyError:
+                self.update_console(f"Error: Sheet '{sheet_name}' not found in one of the files")
+                return None
+            
+            # Parse the cell range
+            match = re.match(r"([A-Z]+)(\d+):([A-Z]+)(\d+)", cell_range)
+            if not match:
+                self.update_console("Error: Invalid cell range format. Use format like 'A1:D10'")
+                return None
+            
+            start_col_letter, start_row, end_col_letter, end_row = match.groups()
+            start_row = int(start_row)
+            end_row = int(end_row)
+            
+            # Process cells in the range
+            for row in range(start_row, end_row + 1):
+                for col_idx in range(column_index_from_string(start_col_letter), 
+                                   column_index_from_string(end_col_letter) + 1):
+                    col_letter = get_column_letter(col_idx)
+                    cell1 = sheet1[f"{col_letter}{row}"]
+                    cell2 = sheet2[f"{col_letter}{row}"]
+                    
+                    # Convert to float if numeric
+                    try:
+                        val1 = float(cell1.value) if cell1.value is not None else None
+                        val2 = float(cell2.value) if cell2.value is not None else None
+                        
+                        # Calculate difference if both cells have numeric values
+                        if val1 is not None and val2 is not None:
+                            diff = val2 - val1
+                            sheet2[f"{col_letter}{row}"].value = diff
+                        else:
+                            sheet2[f"{col_letter}{row}"].value = cell2.value
+                    except (ValueError, TypeError):
+                        sheet2[f"{col_letter}{row}"].value = cell2.value
+            
+            # Save the modified workbook
+            workbook2.save(output_file)
+            return output_file
+            
+        except Exception as e:
+            self.update_console(f"Error processing day movement: {str(e)}")
+            return None
+
+    # [Rest of the class remains unchanged]
+
+
+---- pandas
+
+
+  def process_day_movement(self, file1, file2, sheet_name, cell_range, output_file):
+    """
+    Process Excel files for day movement calculation using pandas
+    Returns path to output file if successful, None otherwise
+    """
+    try:
+        # Load both Excel files
+        df1 = pd.read_excel(file1, sheet_name=sheet_name, engine='openpyxl')
+        df2 = pd.read_excel(file2, sheet_name=sheet_name, engine='openpyxl')
+        
+        # Parse the cell range
+        match = re.match(r"([A-Z]+)(\d+):([A-Z]+)(\d+)", cell_range)
+        if not match:
+            self.update_console("Error: Invalid cell range format. Use format like 'A1:D10'")
+            return None
+            
+        start_col, start_row, end_col, end_row = match.groups()
+        
+        # Convert to 0-based indices
+        start_col_idx = openpyxl.utils.column_index_from_string(start_col) - 1
+        end_col_idx = openpyxl.utils.column_index_from_string(end_col)
+        start_row_idx = int(start_row) - 1
+        end_row_idx = int(end_row)
+        
+        # Get the specified range from both dataframes
+        range1 = df1.iloc[start_row_idx:end_row_idx, start_col_idx:end_col_idx]
+        range2 = df2.iloc[start_row_idx:end_row_idx, start_col_idx:end_col_idx]
+        
+        # Create a copy of df2 to modify
+        result_df = df2.copy()
+        
+        # Calculate differences only for numeric values
+        for col in range1.columns:
+            for idx in range1.index:
+                val1 = range1.at[idx, col]
+                val2 = range2.at[idx, col]
+                
+                try:
+                    # Only calculate if both values are numeric
+                    if pd.notna(val1) and pd.notna(val2):
+                        float_val1 = float(val1)
+                        float_val2 = float(val2)
+                        result_df.at[idx, col] = float_val2 - float_val1
+                except (ValueError, TypeError):
+                    # Keep original value if conversion fails
+                    pass
+        
+        # Save the result while preserving the original Excel structure
+        with pd.ExcelWriter(output_file, engine='openpyxl') as writer:
+            result_df.to_excel(writer, sheet_name=sheet_name, index=False)
+            
+            # Copy other sheets from the original file
+            wb = openpyxl.load_workbook(file2)
+            for sheet in wb.sheetnames:
+                if sheet != sheet_name:
+                    ws = wb[sheet]
+                    new_ws = writer.book.create_sheet(sheet)
+                    for row in ws.iter_rows():
+                        for cell in row:
+                            new_ws[cell.coordinate].value = cell.value
+        
+        return output_file
+        
+    except Exception as e:
+        self.update_console(f"Error processing day movement: {str(e)}")
+        return None
